@@ -4,7 +4,7 @@ import connectDB from '@/src/lib/dbConnect';
 import Module from '@/src/models/Module';
 import Task from '@/src/models/Task';
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
      const { id } = await params;

@@ -3,7 +3,7 @@ import dbConnect from '@/src/lib/dbConnect';
 import Task from '@/src/models/Task';
 
 // [PUT] /api/admin/tasks/[id] - Tapşırığı və onun daxili Test Case-lərini yeniləyir
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   await dbConnect();
   try {
     const body = await req.json();

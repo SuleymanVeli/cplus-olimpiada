@@ -4,10 +4,7 @@ import Task from '@/src/models/Task';
 import Module from '@/src/models/Module';
 import UserProgress from '@/src/models/UserProgress';
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
     const { id } = await params;

@@ -60,6 +60,7 @@ export default function GamingPath() {
     title: string;
     moduleTitle: string;
     desc: string;
+    animal: typeof animalsData[number] | null;
     x: number;
     y: number;
     isLeftSide: boolean;
