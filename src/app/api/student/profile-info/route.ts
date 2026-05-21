@@ -1,28 +1,31 @@
 // src/app/api/student/profile-info/route.ts
 import dbConnect from "@/lib/dbConnect";
 import User from "@/models/User";
-import Submission from "@/src/models/Submission";
-import Task from "@/models/Task";
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
 
 export async function GET() {
   try {
     await dbConnect();
     const session = await getServerSession();
-    if (!session) return NextResponse.json({ error: "Yetki yoxdur" }, { status: 401 });
 
-    const user = await User.findOne({ email: session.user?.email })
-      .select("fullName avatar globalNote")
-      .lean();
+    if (!session || !session.user?.email) {
+      return NextResponse.json({ error: "Sessiya tapılmadı" }, { status: 401 });
+    }
 
-    // Sidebar üçün tapşırıqların siyahısını gətiririk
-    const submissions = await Submission.find({ userId: user?._id })
-      .populate({ path: 'taskId', select: 'title', model: Task })
-      .select("status taskId")
-      .lean();
+    let user = await User.findOne({ email: session.user.email });
 
-    return NextResponse.json({ ...user, submissions });
+    // Əgər istifadəçi ilk dəfə gəlirsə, bazada sətir açırıq (Açıq Qeydiyyat)
+    if (!user) {
+      user = await User.create({
+        email: session.user.email,
+        fullName: session.user.name || "",
+        isRegistered: false,
+        isBlocked: false
+      });
+    }
+
+    return NextResponse.json(user);
   } catch (error) {
     return NextResponse.json({ error: "Server xətası" }, { status: 500 });
   }

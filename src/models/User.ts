@@ -1,14 +1,16 @@
+// src/models/User.ts
 import mongoose from 'mongoose';
 
 const UserSchema = new mongoose.Schema({
-  fullName: String,
-  email: { type: String },
-  avatar: String,
-  inviteCode: { type: String, unique: true }, // Sənin generate etdiyin ID
+  fullName: { type: String, default: "" },
+  email: { type: String, required: true, unique: true },
+  avatar: { type: String, default: "1" },
   role: { type: String, enum: ['student', 'admin'], default: 'student' },
-  isRegistered: { type: Boolean, default: false },
-  registeredAt: Date,
-  globalNote: { type: String, default: "" }, // Şagirdə özəl qeydin
+  isRegistered: { type: Boolean, default: false }, // Profil ad/avatar seçibmi?
+  isBlocked: { type: Boolean, default: false },    // Blok vəziyyəti
+  isPro: { type: Boolean, default: false },        // Pro üzvlüklərin idarəsi üçün
+  registeredAt: { type: Date },
+  globalNote: { type: String, default: "" },
   assignedTasks: [{
     taskId: { type: mongoose.Schema.Types.ObjectId, ref: 'Task' },
     assignedAt: { type: Date, default: Date.now }

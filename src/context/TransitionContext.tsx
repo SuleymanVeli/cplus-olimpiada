@@ -58,8 +58,94 @@ export function TransitionProvider({ children }: { children: React.ReactNode }) 
     };
   }, [pathname, isTransitioning]);
 
+
+  // =======================================================
+  // 🚀 BRAUZERİN GERİ/İRƏLİ OX İDARƏSİ (POPSTATE)
+  // =======================================================
+  useEffect(() => {
+    const handlePopState = () => {
+      // 1. Brauzerin səhifəni "sərt" şəkildə dərhal dəyişməsinin qarşısını alırıq
+      window.history.pushState(null, '', window.location.href);
+
+      // 2. Keçid edilmək istənən real hədəf URL-ni brauzerdən oxuyuruq
+      const targetUrl = window.location.pathname;
+
+      if (pathname === targetUrl) return;
+
+      // 3. Bulud qapılarını bağlamağa başlayırıq
+      setIsTransitioning(true);
+
+      // 4. Sənin buludların qapanma müddəti (600ms) bitəndə Next.js router ilə səhifəni dəyişirik
+      setTimeout(() => {
+        router.replace(targetUrl); 
+        // Qeyd: replace istifadə edirik ki, tarixçədə (history) sonsuz döngü yaranmasın
+      }, 600);
+    };
+
+    // Dinləyicini aktiv edirik
+    window.addEventListener('popstate', handlePopState);
+    
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [pathname, router]);
+
   return (
     <TransitionContext.Provider value={{ isTransitioning, navigateTo, endTransition }}>
+       {/* =======================================================
+          3D PREMIUM ÇOXQATLI BULUD KEÇİDİ (PREMIUM CLOUD OVERLAY)
+         ======================================================= */}
+      <div className={`fixed inset-0 pointer-events-none z-[9999] flex transition-all duration-700 ${isTransitioning ? 'opacity-100 bg-indigo-900/5' : 'opacity-0 bg-transparent'}`}>
+        
+        {/* ================= SOL BULUD SİSTEMİ ================= */}
+        <div className={`w-1/2 h-full bg-white relative transition-transform duration-[650ms] cubic-bezier(0.19, 1, 0.22, 1) ${isTransitioning ? 'translate-x-0' : '-translate-x-full'}`}>
+          
+          {/* Əsas Pufiklər */}
+          <div className="absolute right-[-110px] top-[5%] w-[260px] h-[260px] bg-white rounded-full shadow-[-20px_10px_40px_rgba(0,0,0,0.04)] animate-cloud-slow" />
+          <div className="absolute right-[-60px] top-[28%] w-[190px] h-[190px] bg-white rounded-full shadow-[-15px_10px_30px_rgba(0,0,0,0.03)] animate-cloud-fast" style={{ animationDelay: '-1.5s' }} />
+          <div className="absolute right-[-130px] top-[50%] w-[320px] h-[320px] bg-white rounded-full shadow-[-25px_15px_50px_rgba(0,0,0,0.04)] animate-cloud-slow" style={{ animationDelay: '-0.8s' }} />
+          <div className="absolute right-[-70px] bottom-[12%] w-[200px] h-[200px] bg-white rounded-full shadow-[-15px_5px_30px_rgba(0,0,0,0.03)] animate-cloud-fast" style={{ animationDelay: '-2.2s' }} />
+          <div className="absolute right-[-20px] bottom-[-20px] w-[140px] h-[140px] bg-white rounded-full" />
+
+          {/* Dərinlik Yaradan Kölgə Qatları (Parallax Şəffaf Buludlar) */}
+          <div className="absolute right-[-140px] top-[18%] w-[200px] h-[200px] bg-slate-100/70 rounded-full blur-[2px] animate-cloud-medium" style={{ animationDelay: '-0.5s' }} />
+          <div className="absolute right-[-160px] bottom-[30%] w-[250px] h-[250px] bg-indigo-50/60 rounded-full blur-[1px] animate-cloud-slow" style={{ animationDelay: '-1.2s' }} />
+        </div>
+
+        {/* ================= SAĞ BULUD SİSTEMİ ================= */}
+        <div className={`w-1/2 h-full bg-white relative transition-transform duration-[650ms] cubic-bezier(0.19, 1, 0.22, 1) ${isTransitioning ? 'translate-x-0' : 'translate-x-full'}`}> 
+          {/* Əsas Pufiklər */}
+          <div className="absolute left-[-120px] top-[1%] w-[280px] h-[280px] bg-white rounded-full shadow-[20px_10px_45px_rgba(0,0,0,0.04)] animate-cloud-slow" style={{ animationDelay: '-0.3s' }} />
+          <div className="absolute left-[-50px] top-[32%] w-[170px] h-[170px] bg-white rounded-full shadow-[15px_10px_30px_rgba(0,0,0,0.03)] animate-cloud-fast" style={{ animationDelay: '-2.7s' }} />
+          <div className="absolute left-[-110px] top-[48%] w-[290px] h-[290px] bg-white rounded-full shadow-[20px_15px_40px_rgba(0,0,0,0.04)] animate-cloud-slow" style={{ animationDelay: '-1.9s' }} />
+          <div className="absolute left-[-80px] bottom-[15%] w-[220px] h-[220px] bg-white rounded-full shadow-[15px_5px_35px_rgba(0,0,0,0.03)] animate-cloud-medium" style={{ animationDelay: '-0.6s' }} />
+          <div className="absolute left-[-30px] bottom-[-30px] w-[160px] h-[160px] bg-white rounded-full" />
+
+          {/* Dərinlik Yaradan Kölgə Qatları (Parallax Şəffaf Buludlar) */}
+          <div className="absolute left-[-150px] top-[22%] w-[220px] h-[220px] bg-slate-100/70 rounded-full blur-[2px] animate-cloud-medium" style={{ animationDelay: '-1.4s' }} />
+          <div className="absolute left-[-130px] bottom-[35%] w-[210px] h-[210px] bg-indigo-50/60 rounded-full blur-[1px] animate-cloud-fast" style={{ animationDelay: '-0.2s' }} />
+        </div>
+
+        {/* CSS Texnikası: Akustik yellənmə animasiyaları */}
+        <style jsx global>{`
+          @keyframes cloudWaveSlow {
+            0%, 100% { transform: translateY(0) scale(1) rotate(0deg); }
+            50% { transform: translateY(-15px) scale(1.03) rotate(2deg); }
+          }
+          @keyframes cloudWaveMedium {
+            0%, 100% { transform: translateY(0) scale(1) rotate(0deg); }
+            50% { transform: translateY(-10px) scale(1.01) rotate(-3deg); }
+          }
+          @keyframes cloudWaveFast {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-7px) scale(1.04); }
+          }
+          .animate-cloud-slow { animation: cloudWaveSlow 6s ease-in-out infinite; }
+          .animate-cloud-medium { animation: cloudWaveMedium 4.5s ease-in-out infinite; }
+          .animate-cloud-fast { animation: cloudWaveFast 3s ease-in-out infinite; }
+        `}</style>
+      </div>
+
       {children}
     </TransitionContext.Provider>
   );

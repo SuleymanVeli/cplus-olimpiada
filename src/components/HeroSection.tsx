@@ -17,6 +17,7 @@ interface Animal {
 
 export default function HeroSection({ onLoginClick }: HeroSectionProps) {
   const [hoveredAnimal, setHoveredAnimal] = useState<number | null>(null);
+  
 
   // Heyvanlar daha böyük ölçülərdə və ekranın kənarlarına doğru geniş səpələnib
   const animals: Animal[] = [

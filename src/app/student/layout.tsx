@@ -3,17 +3,24 @@
 import { useState } from 'react';
 import { useUser } from '@/src/context/UserContext';
 import { useTransition } from '@/src/context/TransitionContext';
-import { Home, LogOut, ChevronRight, Terminal, UserPen, X, Check, Loader2, Award } from 'lucide-react';
 import { usePathname } from 'next/navigation';
+import { 
+  LogOut, ChevronRight, Terminal, UserPen, X, Check, 
+  Loader2, Award, Sparkles, Map, ChevronLeft, Menu 
+} from 'lucide-react';
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
-  const { userData, setUserData } = useUser();
-  const { isTransitioning, navigateTo } = useTransition();
+  const { userData, setUserData, logout } = useUser();
+  const { navigateTo } = useTransition();
   const pathname = usePathname();
   
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isCardMinimized, setIsCardMinimized] = useState(false);
   const [tempData, setTempData] = useState({ fullName: '', avatar: 1 });
+
+  // Yalnız "learning" (Xəritə) səhifəsində bu sehirli kart görünsün
+  const showInfoCard = pathname === '/student/learning';
 
   const handleEditOpen = () => {
     setTempData({ fullName: userData?.fullName || '', avatar: userData?.avatar || 1 });
@@ -41,216 +48,208 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   };
 
   return (
-    <div className="flex min-h-screen bg-[#f4f7fa] font-sans overflow-hidden relative">
+    <div className="flex min-h-screen bg-[#bfe3f0] text-slate-800 font-sans overflow-x-hidden relative select-none">
       
-      {/* =======================================================
-          3D PREMIUM ÇOXQATLI BULUD KEÇİDİ (PREMIUM CLOUD OVERLAY)
-         ======================================================= */}
-      <div className={`fixed inset-0 pointer-events-none z-[9999] flex transition-all duration-700 ${isTransitioning ? 'opacity-100 bg-indigo-900/5' : 'opacity-0 bg-transparent'}`}>
-        
-        {/* ================= SOL BULUD SİSTEMİ ================= */}
-        <div className={`w-1/2 h-full bg-white relative transition-transform duration-[650ms] cubic-bezier(0.19, 1, 0.22, 1) ${isTransitioning ? 'translate-x-0' : '-translate-x-full'}`}>
-          
-          {/* Əsas Pufiklər */}
-          <div className="absolute right-[-110px] top-[5%] w-[260px] h-[260px] bg-white rounded-full shadow-[-20px_10px_40px_rgba(0,0,0,0.04)] animate-cloud-slow" />
-          <div className="absolute right-[-60px] top-[28%] w-[190px] h-[190px] bg-white rounded-full shadow-[-15px_10px_30px_rgba(0,0,0,0.03)] animate-cloud-fast" style={{ animationDelay: '-1.5s' }} />
-          <div className="absolute right-[-130px] top-[50%] w-[320px] h-[320px] bg-white rounded-full shadow-[-25px_15px_50px_rgba(0,0,0,0.04)] animate-cloud-slow" style={{ animationDelay: '-0.8s' }} />
-          <div className="absolute right-[-70px] bottom-[12%] w-[200px] h-[200px] bg-white rounded-full shadow-[-15px_5px_30px_rgba(0,0,0,0.03)] animate-cloud-fast" style={{ animationDelay: '-2.2s' }} />
-          <div className="absolute right-[-20px] bottom-[-20px] w-[140px] h-[140px] bg-white rounded-full" />
+      {/* DEKORATİV ARXA FON ELEMENTLƏRİ */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-gradient-to-b from-[#eef9f1] to-transparent pointer-events-none z-0" />
 
-          {/* Dərinlik Yaradan Kölgə Qatları (Parallax Şəffaf Buludlar) */}
-          <div className="absolute right-[-140px] top-[18%] w-[200px] h-[200px] bg-slate-100/70 rounded-full blur-[2px] animate-cloud-medium" style={{ animationDelay: '-0.5s' }} />
-          <div className="absolute right-[-160px] bottom-[30%] w-[250px] h-[250px] bg-indigo-50/60 rounded-full blur-[1px] animate-cloud-slow" style={{ animationDelay: '-1.2s' }} />
-        </div>
-
-        {/* ================= SAĞ BULUD SİSTEMİ ================= */}
-        <div className={`w-1/2 h-full bg-white relative transition-transform duration-[650ms] cubic-bezier(0.19, 1, 0.22, 1) ${isTransitioning ? 'translate-x-0' : 'translate-x-full'}`}> 
-          {/* Əsas Pufiklər */}
-          <div className="absolute left-[-120px] top-[1%] w-[280px] h-[280px] bg-white rounded-full shadow-[20px_10px_45px_rgba(0,0,0,0.04)] animate-cloud-slow" style={{ animationDelay: '-0.3s' }} />
-          <div className="absolute left-[-50px] top-[32%] w-[170px] h-[170px] bg-white rounded-full shadow-[15px_10px_30px_rgba(0,0,0,0.03)] animate-cloud-fast" style={{ animationDelay: '-2.7s' }} />
-          <div className="absolute left-[-110px] top-[48%] w-[290px] h-[290px] bg-white rounded-full shadow-[20px_15px_40px_rgba(0,0,0,0.04)] animate-cloud-slow" style={{ animationDelay: '-1.9s' }} />
-          <div className="absolute left-[-80px] bottom-[15%] w-[220px] h-[220px] bg-white rounded-full shadow-[15px_5px_35px_rgba(0,0,0,0.03)] animate-cloud-medium" style={{ animationDelay: '-0.6s' }} />
-          <div className="absolute left-[-30px] bottom-[-30px] w-[160px] h-[160px] bg-white rounded-full" />
-
-          {/* Dərinlik Yaradan Kölgə Qatları (Parallax Şəffaf Buludlar) */}
-          <div className="absolute left-[-150px] top-[22%] w-[220px] h-[220px] bg-slate-100/70 rounded-full blur-[2px] animate-cloud-medium" style={{ animationDelay: '-1.4s' }} />
-          <div className="absolute left-[-130px] bottom-[35%] w-[210px] h-[210px] bg-indigo-50/60 rounded-full blur-[1px] animate-cloud-fast" style={{ animationDelay: '-0.2s' }} />
-        </div>
-
-        {/* CSS Texnikası: Akustik yellənmə animasiyaları */}
-        <style jsx global>{`
-          @keyframes cloudWaveSlow {
-            0%, 100% { transform: translateY(0) scale(1) rotate(0deg); }
-            50% { transform: translateY(-15px) scale(1.03) rotate(2deg); }
-          }
-          @keyframes cloudWaveMedium {
-            0%, 100% { transform: translateY(0) scale(1) rotate(0deg); }
-            50% { transform: translateY(-10px) scale(1.01) rotate(-3deg); }
-          }
-          @keyframes cloudWaveFast {
-            0%, 100% { transform: translateY(0) scale(1); }
-            50% { transform: translateY(-7px) scale(1.04); }
-          }
-          .animate-cloud-slow { animation: cloudWaveSlow 6s ease-in-out infinite; }
-          .animate-cloud-medium { animation: cloudWaveMedium 4.5s ease-in-out infinite; }
-          .animate-cloud-fast { animation: cloudWaveFast 3s ease-in-out infinite; }
-        `}</style>
-      </div>
-
-      {/* SIDEBAR */}
-      <aside className="w-72 bg-white border-r border-slate-200 flex flex-col sticky top-0 h-screen z-40">
-        <div className="p-6 flex flex-col h-full">
-          
-          {/* LOGO */}
-          <div className="flex items-center justify-center gap-2 mb-10 group cursor-default animate-in fade-in slide-in-from-top duration-700">
-            <div className="bg-slate-900 p-2 rounded-xl transition-all group-hover:rotate-[15deg] group-hover:scale-110">
-              <Terminal className="text-white" size={18} />
-            </div>
-            <h1 className="font-black text-lg tracking-tighter text-slate-900 uppercase">CodersCup</h1>
-          </div>
-
-          {/* PROFIL */}
-          {!userData ? (
-             <div className="h-48 bg-slate-50 animate-pulse rounded-2xl mb-10" />
+      {/* FLOATING INFO CARD (OYUN STİLİNDƏ HUD / PANEL - AÇIQ FON) */}
+      {showInfoCard && userData && (
+        <div className="fixed top-6 left-6 z-50 pointer-events-auto animate-in fade-in slide-in-from-left duration-500">
+          {isCardMinimized ? (
+            /* Kart gizli olduqda görünən Sehirli Düymə */
+            <button 
+              onClick={() => setIsCardMinimized(false)}
+              className="bg-white/95 border-2 border-emerald-300/50 text-emerald-600 p-4 rounded-2xl shadow-[0_10px_25px_rgba(46,204,113,0.2)] hover:scale-105 active:scale-95 transition-all flex items-center gap-2 font-black text-xs uppercase tracking-wider backdrop-blur-xl animate-bounce border-b-4"
+            >
+              <Menu size={18} /> Profil Paneli
+            </button>
           ) : (
-            <div className="flex flex-col items-center mb-10 px-2 group animate-in fade-in zoom-in-95 duration-1000 delay-150 fill-mode-both">
-              <div className="relative mb-5">
-                <div className="absolute -inset-4 bg-indigo-500/10 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition duration-700" />
-                <div className="relative">
+            /* Uçan, yuxarı-aşağı yellənən Əsl Oyunçu Kartı (Açıq rəngli) */
+            <div className="w-72 bg-white/95 border-2 border-emerald-200 rounded-[24px] shadow-[0_20px_60px_rgba(46,204,113,0.15)] backdrop-blur-xl p-5 flex flex-col relative animate-game-float border-b-[6px]">
+              
+              {/* Kartı Kiçiltmə Düyməsi */}
+              <button 
+                onClick={() => setIsCardMinimized(true)}
+                className="absolute top-4 right-4 text-emerald-400/50 hover:text-emerald-500 transition-colors"
+                title="Paneli Gizlə"
+              >
+                <ChevronLeft size={18} />
+              </button>
+
+              {/* LOGO SƏTİRİ */}
+              <div className="flex items-center gap-2 mb-6 border-b border-slate-100 pb-3">
+                <div className="bg-gradient-to-tr from-emerald-500 to-teal-600 p-1.5 rounded-lg text-white">
+                  <Terminal size={14} />
+                </div>
+                <span className="font-black text-xs tracking-widest text-slate-900 uppercase font-mono">
+                  Arcadia <span className="text-emerald-500">HUD</span>
+                </span>
+              </div>
+
+              {/* OYUNÇU AVATARI & MƏLUMATLAR */}
+              <div className="flex flex-col items-center text-center mb-5 relative group">
+                <div className="relative mb-3">
+                  <div className="absolute -inset-2 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-[2rem] blur-xl opacity-20 group-hover:opacity-40 transition duration-500" />
                   <img 
                     src={`/avatars/avatar-${userData.avatar || 1}.png`} 
-                    className="w-28 h-28 rounded-[2.5rem] object-cover bg-slate-50 border-4 border-white shadow-2xl transition-transform duration-500 group-hover:scale-105 group-hover:-rotate-3" 
-                    alt="Student" 
+                    className="w-20 h-20 rounded-[1.8rem] object-cover bg-white border-2 border-emerald-100 shadow-lg relative z-10 transition-transform duration-300 group-hover:scale-105" 
+                    alt="Hero Avatar" 
                   />
                   <button 
                     onClick={handleEditOpen}
-                    className="absolute bottom-0 right-0 bg-slate-900 text-white p-2.5 rounded-2xl shadow-xl hover:bg-indigo-600 transition-all active:scale-90 border-4 border-white"
+                    className="absolute -bottom-1 -right-1 bg-emerald-500 text-slate-950 p-2 rounded-xl shadow-lg hover:bg-emerald-400 transition-all active:scale-90 z-20 border border-white"
                   >
-                    <UserPen size={14} />
+                    <UserPen size={12} />
                   </button>
                 </div>
+
+                <h4 className="font-black text-slate-900 text-base tracking-tight leading-tight mb-1.5">
+                  {userData.fullName}
+                </h4>
+                
+                <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 text-[9px] font-black uppercase tracking-widest">
+                  <Award size={10} className="text-amber-500 animate-pulse" /> Pro Member
+                </div>
               </div>
-              
-              <div className="text-center space-y-1 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-300 fill-mode-both">
-                 <h4 className="font-black text-slate-900 text-[17px] tracking-tight leading-tight">
-                    {userData.fullName}
-                 </h4>
-                 <div className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100">
-                    <Award size={10} />
-                    <span className="text-[9px] uppercase tracking-[0.2em] font-black">Pro Member</span>
-                 </div>
+
+              {/* MİSSİYALAR / TƏDRİS PLANI BÖLMƏSİ */}
+              <div className="flex-1 flex flex-col min-h-[150px] max-h-[240px]">
+                <div className="text-[9px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-2 flex items-center gap-1">
+                  <Map size={10} /> Aktiv Arenalar
+                </div>
+                
+                <div className="flex-1 space-y-1.5 overflow-y-auto pr-1 custom-scrollbar">
+                  {userData?.submissions?.map((sub: any) => {
+                    const isActive = pathname.includes(sub._id);
+                    return (
+                      <button 
+                        key={sub._id} 
+                        onClick={() => navigateTo(`/student/tasks/${sub._id}`)} 
+                        className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-[11px] transition-all border text-left group ${
+                          isActive 
+                            ? 'bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-700 border-emerald-300 shadow-inner translate-x-1' 
+                            : 'text-slate-500 bg-white border-slate-100 hover:bg-slate-50 hover:text-slate-800'
+                        }`}
+                      >
+                        <span className="truncate w-40">{sub.taskId.title}</span>
+                        <div className="flex items-center">
+                          {sub.status === 'submitted' ? (
+                            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
+                          ) : (
+                            <ChevronRight size={12} className="opacity-0 group-hover:opacity-100 transition-all -translate-x-1 group-hover:translate-x-0" />
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
+
+              {/* ÇIXIŞ DÜYMƏSİ */}
+              <div className="pt-3 border-t border-slate-100 mt-4">
+                <button onClick={logout} className="flex items-center justify-center gap-2 text-slate-400 font-black text-[10px] uppercase tracking-widest hover:text-red-500 transition-colors w-full py-1.5 group">
+                  <LogOut size={14} className="group-hover:-translate-x-0.5 transition-transform" /> Meşəni Tərk Et
+                </button>
+              </div>
+
             </div>
           )}
-
-          {/* NAVIGASYON */}
-          <nav className="flex-1 space-y-1 overflow-y-auto pr-2 custom-scrollbar border-t border-slate-50 pt-8 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-500 fill-mode-both">
-            <button 
-              onClick={() => navigateTo('/student/learning')} 
-              className={`w-full flex items-center gap-3 px-5 py-3.5 rounded-2xl font-bold text-[13px] transition-all duration-300 group text-left ${
-                pathname === '/student/learning' 
-                ? 'bg-slate-900 text-white shadow-xl shadow-slate-200 translate-x-1' 
-                : 'text-slate-500 hover:bg-slate-50 hover:translate-x-1'
-              }`}
-            >
-              <Home size={18} className={pathname === '/student/learning' ? 'animate-bounce' : ''} /> Learning
-            </button>
-            
-            <div className="pt-8 pb-3 text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] px-5">
-              Tədris Planı
-            </div>
-            
-            <div className="space-y-1.5">
-              {userData?.submissions?.map((sub: any) => (
-                <button 
-                  key={sub._id} 
-                  onClick={() => navigateTo(`/student/tasks/${sub._id}`)} 
-                  className={`w-full flex items-center justify-between px-5 py-3.5 rounded-2xl font-bold text-[12px] transition-all group border border-transparent text-left ${
-                    pathname.includes(sub._id) 
-                    ? 'bg-indigo-50 text-indigo-600 border-indigo-100 translate-x-1' 
-                    : 'text-slate-500 hover:bg-slate-50 hover:translate-x-1'
-                  }`}
-                >
-                  <span className="truncate w-36">{sub.taskId.title}</span>
-                  <div className="flex items-center">
-                    {sub.status === 'submitted' ? (
-                      <div className="w-2 h-2 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
-                    ) : (
-                      <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
-                    )}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </nav>
-
-          {/* Çıxış */}
-          <div className="pt-6 border-t border-slate-100 mt-4 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-700 fill-mode-both">
-             <button className="flex items-center gap-3 text-slate-400 font-bold text-xs hover:text-red-500 transition-all w-full px-5 py-2 group">
-                <LogOut size={18} className="group-hover:-translate-x-1 transition-transform" /> Çıxış
-             </button>
-          </div>
         </div>
-      </aside>
+      )}
 
-      {/* MAIN CONTENT AREA */}
-      <main className="flex-1 h-screen overflow-y-auto bg-white/40">
-        <div className="animate-in fade-in slide-in-from-right-4 duration-700 ease-out fill-mode-both">
+      {/* ƏSAS KONTENT SAHƏSİ (FULL SCREEN ARENA - AÇIQ FONLU) */}
+      <main className="flex-1 min-h-screen relative z-10">
+        <div className="animate-in fade-in duration-500 ease-out fill-mode-both">
           {children}
         </div>
       </main>
 
-      {/* EDIT MODAL */}
+      {/* PROFIL YENİLƏMƏ MODALI (AVATAR SEÇİMİ - AÇIQ FON LU) */}
       {isEditOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-sm rounded-[2rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.2)] overflow-hidden animate-in zoom-in-90 slide-in-from-bottom-8 duration-500 ease-out">
-            <div className="p-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
-               <h3 className="font-black text-slate-800 tracking-tighter text-lg italic">Profilini Cilala</h3>
-               <button onClick={() => setIsEditOpen(false)} className="text-slate-400 hover:text-slate-900 hover:rotate-90 transition-all duration-300"><X size={20} /></button>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white border-2 border-emerald-200 w-full max-w-sm rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.1)] overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <h3 className="font-black text-slate-800 tracking-wider text-sm uppercase flex items-center gap-2">
+                <Sparkles size={16} className="text-amber-500 animate-spin" /> Qəhrəmanını Cilala
+              </h3>
+              <button onClick={() => setIsEditOpen(false)} className="text-slate-400 hover:text-slate-900 transition-colors">
+                <X size={18} />
+              </button>
             </div>
             
-            <div className="p-10 space-y-8">
-              <div className="flex flex-col items-center gap-6">
-                 <div className="relative group">
-                    <img src={`/avatars/avatar-${tempData.avatar}.png`} className="w-24 h-24 rounded-[2.5rem] bg-slate-50 border-4 border-white shadow-2xl transition-all duration-500 group-hover:rotate-6" alt="Avatar" />
-                    <div className="absolute -inset-2 border-2 border-dashed border-indigo-200 rounded-[2.8rem] animate-[spin_10s_linear_infinite]" />
-                 </div>
-                 
-                 <div className="flex gap-3 flex-wrap justify-center bg-slate-50 p-4 rounded-3xl border border-slate-100">
-                    {[1, 2, 3, 4, 5].map((idx) => (
-                      <button 
-                        key={idx} 
-                        onClick={() => setTempData({...tempData, avatar: idx})} 
-                        className={`w-10 h-10 rounded-xl border-2 transition-all duration-300 active:scale-75 ${tempData.avatar === idx ? 'border-indigo-600 scale-125 shadow-xl z-10' : 'border-transparent opacity-40 hover:opacity-100 hover:scale-110'}`}
-                      >
-                        <img src={`/avatars/avatar-${idx}.png`} alt="Option" className="w-full h-full object-cover rounded-lg" />
-                      </button>
-                    ))}
-                 </div>
+            <div className="p-6 space-y-6">
+              <div className="flex flex-col items-center gap-4">
+                <div className="relative">
+                  <img src={`/avatars/avatar-${tempData.avatar}.png`} className="w-20 h-20 rounded-2xl bg-white border-2 border-emerald-100 shadow-lg" alt="Avatar Preview" />
+                  <div className="absolute -inset-1.5 border border-dashed border-emerald-300/60 rounded-2xl animate-[spin_15s_linear_infinite]" />
+                </div>
+                
+                <div className="grid grid-cols-5 gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-100 w-full justify-center">
+                  {[1, 2, 3, 4, 5].map((idx) => (
+                    <button 
+                      key={idx} 
+                      type="button"
+                      onClick={() => setTempData({...tempData, avatar: idx})} 
+                      className={`aspect-square rounded-xl border-2 transition-all p-0.5 ${
+                        tempData.avatar === idx 
+                          ? 'border-emerald-400 scale-110 shadow-lg bg-emerald-50' 
+                          : 'border-transparent opacity-40 hover:opacity-100'
+                      }`}
+                    >
+                      <img src={`/avatars/avatar-${idx}.png`} alt="Option" className="w-full h-full object-cover rounded-lg" />
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              <div className="space-y-3">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 px-2">Tam Adın</label>
+              <div className="space-y-2">
+                <label className="text-[9px] font-black uppercase tracking-[0.2em] text-emerald-600 block px-1">Görünən Adın</label>
                 <input 
                   type="text" 
                   value={tempData.fullName}
                   onChange={(e) => setTempData({...tempData, fullName: e.target.value})}
-                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 font-bold text-slate-800 focus:outline-none focus:border-indigo-600 focus:bg-white transition-all shadow-inner"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-800 text-sm focus:outline-none focus:border-emerald-500 focus:bg-emerald-50/20 transition-colors"
                 />
               </div>
 
               <button 
                 onClick={saveProfile}
-                disabled={isUpdating}
-                className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-[11px] uppercase tracking-[0.3em] shadow-[0_20px_40px_-10px_rgba(15,23,42,0.3)] hover:bg-indigo-600 hover:-translate-y-1 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3 group"
+                disabled={isUpdating || !tempData.fullName.trim()}
+                className="w-full bg-gradient-to-r from-emerald-400 to-teal-500 text-slate-950 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest border-b-[4px] border-emerald-700 active:border-b-0 active:translate-y-[4px] disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
               >
-                {isUpdating ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} className="group-hover:scale-150 transition-transform" />} 
-                {isUpdating ? "Sinxronizasiya..." : "Dəyişiklikləri Qoru"}
+                {isUpdating ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} 
+                {isUpdating ? "Yadda saxlanılır..." : "Kodeksi Yenilə"}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* YUMŞAQ YUXARI-AŞAĞI YELLƏNMƏ ANIMASIYASI & SKROLBAR (TAILWIND STYLES) */}
+      <style jsx global>{`
+        @keyframes gameFloat {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-8px); }
+        }
+        .animate-game-float {
+          animation: gameFloat 4s ease-in-out infinite;
+        }
+        /* Özəl Skrolbar Görünüşü (Açıq Rənglərlə) */
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(46, 204, 113, 0.15);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(46, 204, 113, 0.3);
+        }
+      `}</style>
     </div>
   );
 }

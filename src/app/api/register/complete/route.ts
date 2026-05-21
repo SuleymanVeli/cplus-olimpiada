@@ -1,30 +1,46 @@
+// src/app/api/register/complete/route.ts
 import dbConnect from "@/lib/dbConnect";
 import User from "@/models/User";
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
 
 export async function POST(req: Request) {
   try {
     await dbConnect();
-    const { inviteCode, email, fullName, avatar } = await req.json();
+    const session = await getServerSession();
 
-    // 1. Kodu yoxla və hələ istifadə olunmadığından əmin ol
-    const invite = await User.findOne({ inviteCode, isRegistered: false });
-
-    if (!invite) {
-      return NextResponse.json({ error: "Kod keçərsizdir və ya artıq istifadə olunub!" }, { status: 400 });
+    if (!session || !session.user?.email) {
+      return NextResponse.json({ error: "Sessiya tapılmadı!" }, { status: 401 });
     }
 
-    // 2. Mövcud "invite" sətirini şagird məlumatları ilə doldur
-    invite.email = email;
-    invite.fullName = fullName;
-    invite.avatar = avatar;
-    invite.isRegistered = true;
-    invite.registeredAt = new Date();
-    
-    await invite.save();
+    const { firstName, lastName, avatar } = await req.json();
 
-    return NextResponse.json({ success: true });
+    if (!firstName?.trim() || !lastName?.trim()) {
+      return NextResponse.json({ error: "Ad və Soyad doldurulmalıdır!" }, { status: 400 });
+    }
+
+    // Google email-i ilə mövcud istifadəçini tap və yenilə
+    const user = await User.findOne({ email: session.user.email });
+
+    if (!user) {
+      return NextResponse.json({ error: "İstifadəçi tapılmadı!" }, { status: 404 });
+    }
+
+    if (user.isBlocked) {
+      return NextResponse.json({ error: "Bu hesab bloklanıb!" }, { status: 403 });
+    }
+
+    user.fullName = `${firstName.trim()} ${lastName.trim()}`;
+    user.avatar = avatar || "1";
+    user.isRegistered = true;
+    user.registeredAt = new Date();
+
+    await user.save();
+
+    return NextResponse.json({ success: true, data: user });
   } catch (error) {
-    return NextResponse.json({ error: "Qeydiyyat xətası" }, { status: 500 });
+    console.error("Registration error:", error);
+    return NextResponse.json({ error: "Qeydiyyat zamanı xəta baş verdi" }, { status: 500 });
   }
 }
+
