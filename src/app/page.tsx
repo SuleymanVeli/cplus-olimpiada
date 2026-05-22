@@ -14,16 +14,20 @@ export default function Home() {
   const [regStep, setRegStep] = useState(1); // 1: Google Login, 2: Register Info
   const [formData, setFormData] = useState({ firstName: '', lastName: '', avatar: '1' });
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // ?logout=true query parametri varsa, istifadəçini çıxış etdirmək üçün useEffect
-
-  const isLogout = new URLSearchParams(window.location.search).has('logout');
+  // logout durumunu state içinde saklıyoruz ki sunucu tarafında patlamasın
+  const [isLogout, setIsLogout] = useState(false);
 
   const { navigateTo } = useTransition();
   const { userData, setUserData, isLoading, logout } = useUser();
 
-  // Scroll Header İdarəsi
+  // URL Query Kontrolü ve Scroll Header İdarəsi (Sadece tarayıcıda çalışır)
   useEffect(() => {
+    // window nesnesini güvenli bir şekilde useEffect içinde kontrol ediyoruz
+    if (typeof window !== 'undefined') {
+      const hasLogout = new URLSearchParams(window.location.search).has('logout');
+      setIsLogout(hasLogout);
+    }
+
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
     };
@@ -32,7 +36,7 @@ export default function Home() {
   }, []);
 
   // İstifadəçinin vəziyyətinə görə modal daxili ekranı təyin etmək
- useEffect(() => {
+  useEffect(() => {
     if (userData && !isLogout) {
       if (userData.isBlocked) {
         setIsLoginOpen(true); // Blok pəncərəsi görünsün
@@ -54,10 +58,12 @@ export default function Home() {
       setUserData(null); // Context məlumatını da təmizlə
     }
 
-  }, [userData, navigateTo]);
+  }, [userData, navigateTo, isLogout, logout, setUserData]);
 
   // 1. Google Girişini yeni kiçik pəncərədə açmaq üçün funksiya
   const handleGoogleSignIn = () => {
+    if (typeof window === 'undefined') return;
+
     // Yeni pəncərənin ölçüləri və ekranın ortasında açılması üçün hesablama
     const width = 500;
     const height = 600;
@@ -80,7 +86,6 @@ export default function Home() {
             if (!popup || popup.closed) {
               clearInterval(timer);
               // Pəncərə bağlandığı an səhifəni yeniləmədən arxa fonda sessiyanı yenidən yoxlayırıq
-              // NextAuth avtomatik olaraq useSession hook-unu tətikləyəcək və bizim isLoading işə düşəcək
               window.location.reload();
             }
           }, 500);
@@ -90,14 +95,14 @@ export default function Home() {
   };
 
   const handleCloseModal = async () => {
-  setIsLoginOpen(false);
-  
-  // Əgər istifadəçi loqin olubsa amma hələ qeydiyyatı bitirməyibsə, sessiyasını təmizləyirik
-  if (userData && !userData.isRegistered) {
-    setRegStep(1);
-    await logout();
-  }
-};
+    setIsLoginOpen(false);
+    
+    // Əgər istifadəçi loqin olubsa amma hələ qeydiyyatı bitirməyibsə, sessiyasını təmizləyirik
+    if (userData && !userData.isRegistered) {
+      setRegStep(1);
+      await logout();
+    }
+  };
 
   const handleRegisterComplete = async () => {
     if (!formData.firstName.trim() || !formData.lastName.trim()) return;
@@ -194,7 +199,7 @@ export default function Home() {
                 <p className="text-slate-500 text-xs mt-1 mb-8 font-medium">Arcadia dünyasına qoşulmaq üçün Google hesabınla daxil ol.</p>
 
                 <button
-                  onClick={handleGoogleSignIn} // Yeni yaratdığımız popup funksiyasını bura verdik
+                  onClick={handleGoogleSignIn}
                   className="w-full bg-white text-slate-800 border-2 border-slate-200 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-slate-50 transition-all border-b-4 active:border-b-0 active:translate-y-[4px]"
                 >
                   <img src="https://authjs.dev/img/providers/google.svg" className="w-4 h-4" alt="Google" />
