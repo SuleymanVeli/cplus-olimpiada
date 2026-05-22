@@ -12,6 +12,8 @@ export async function middleware(request: NextRequest) {
     secret: process.env.NEXTAUTH_SECRET 
   });
 
+  console.log("Middleware çalışdı. Token:", token);
+
   // Qorumaq istədiyimiz tələbə səhifələrinin prefiksi
   const isStudentRoute = pathname.startsWith('/student');
 
@@ -20,7 +22,7 @@ export async function middleware(request: NextRequest) {
     // Onu birbaşa ana səhifəyə yönləndiririk
 
 
-    // return NextResponse.redirect(new URL('/?logout=true', request.url));
+    return NextResponse.redirect(new URL('/?logout=true', request.url));
   }
 
   // Hər şey qaydasındadırsa, keçidə icazə ver
