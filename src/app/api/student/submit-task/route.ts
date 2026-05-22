@@ -1,5 +1,5 @@
 import dbConnect from "@/lib/dbConnect";
-import Submission from "@/src/models/Submission";
+import {Submission} from "@/src/models/Submission";
 import { NextResponse } from "next/server";
 
 export async function PUT(req: Request) {

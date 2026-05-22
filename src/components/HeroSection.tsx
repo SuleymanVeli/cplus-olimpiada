@@ -102,9 +102,9 @@ export default function HeroSection({ onLoginClick }: HeroSectionProps) {
             alt="Sehrli Meşə - Heyvanlarla C++ Öyrən"
             className="w-full h-auto"
           />
-          <div className="text-emerald-900/40 font-extrabold text-xs uppercase tracking-widest mt-3 animate-pulse">
-            ✨ Giriş etmək üçün lövhəyə toxun! ✨
-          </div>
+       <div className="inline-block bg-emerald-50/80 border border-emerald-100/50 text-emerald-600 font-black text-[11px] uppercase tracking-widest px-4 py-1.5 rounded-full mt-3 ">
+  ✨ Giriş etmək üçün lövhəyə toxun! ✨
+</div>
         </div>
       </div>
 

@@ -18,7 +18,9 @@ export async function middleware(request: NextRequest) {
   // Əgər istifadəçi /student ilə başlayan səhifəyə keçmək istəyirsə və loqin olmayıbsa
   if (isStudentRoute && !token) {
     // Onu birbaşa ana səhifəyə yönləndiririk
-    return NextResponse.redirect(new URL('/', request.url));
+
+
+    return NextResponse.redirect(new URL('/?logout=true', request.url));
   }
 
   // Hər şey qaydasındadırsa, keçidə icazə ver

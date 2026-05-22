@@ -15,6 +15,10 @@ export default function Home() {
   const [formData, setFormData] = useState({ firstName: '', lastName: '', avatar: '1' });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // ?logout=true query parametri varsa, istifadəçini çıxış etdirmək üçün useEffect
+
+  const isLogout = new URLSearchParams(window.location.search).has('logout');
+
   const { navigateTo } = useTransition();
   const { userData, setUserData, isLoading, logout } = useUser();
 
@@ -29,7 +33,7 @@ export default function Home() {
 
   // İstifadəçinin vəziyyətinə görə modal daxili ekranı təyin etmək
  useEffect(() => {
-    if (userData) {
+    if (userData && !isLogout) {
       if (userData.isBlocked) {
         setIsLoginOpen(true); // Blok pəncərəsi görünsün
         setRegStep(1);
@@ -41,6 +45,13 @@ export default function Home() {
         setIsLoginOpen(false);
         navigateTo('/student/learning');
       }
+    }
+
+    if (isLogout) {
+      setIsLoginOpen(true); // Loqout varsa, giriş modalını açıq saxla
+      setRegStep(1); // Google login ekranını göstər
+      logout(); // Sessiyanı təmizlə ki, middleware də işləsin və qorunan səhifələrə giriş olmasın
+      setUserData(null); // Context məlumatını da təmizlə
     }
 
   }, [userData, navigateTo]);

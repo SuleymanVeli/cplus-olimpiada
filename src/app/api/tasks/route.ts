@@ -1,7 +1,7 @@
 import dbConnect from "@/src/lib/dbConnect";
 import Task from "@/src/models/Task";
 import { NextResponse } from "next/server";
-import Submission from "@/src/models/Submission";
+import {Submission} from "@/src/models/Submission";
 
 export async function POST(req: Request) {
   try {

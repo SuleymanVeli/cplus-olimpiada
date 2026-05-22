@@ -1,18 +1,42 @@
-import mongoose, { Schema } from 'mongoose';
+import { Schema, model, Document } from 'mongoose';
 
-// Submission Model
-const SubmissionSchema = new Schema({
-  userId: { type: Schema.Types.ObjectId, ref: 'User' },
-  taskId: { type: Schema.Types.ObjectId, ref: 'Task' },
-  // Hər bir sual üçün cavablar
-  answers: [{
-    questionId: String, // Tapşırıq paketindəki sualın ID-si
-    questionTitle: String,
-    studentCode: { type: String, default: "" },
-    adminNote: { type: String, default: "" } // Hər kod üçün xüsusi qeyd
-  }],
-  status: { type: String, enum: ['pending', 'submitted', 'reviewed'], default: 'pending' },
-  submittedAt: Date
-});
+export interface IQuestionProgress {
+  questionId: string; // Contest daxilindəki məsələnin alt ID-si
+  code: string;
+  testStatuses: ('waiting' | 'checking' | 'passed' | 'failed')[];
+  compilerError: string | null;
+  userPassedCount: number;
+  score: number; // Bu məsələdən aldığı xal (userPassedCount * pointsPerTest)
+}
 
-export default mongoose.models.Submission || mongoose.model('Submission', SubmissionSchema);
+export interface ISubmission extends Document {
+  contestId: Schema.Types.ObjectId;
+  studentId: Schema.Types.ObjectId;
+  totalScore: number; // Bütün məsələlərin cəm xalı
+  activeQuestionId: string; // Şagirdin son qaldığı məsələ
+  progress: Map<string, IQuestionProgress>; // Key: questionId, Value: gedişat
+}
+
+const SubmissionSchema = new Schema<ISubmission>({
+  contestId: { type: Schema.Types.ObjectId, ref: 'Contest', required: true },
+  studentId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  totalScore: { type: Number, default: 0, required: true },
+  activeQuestionId: { type: String },
+  // Map istifadə etmək O(1) zaman kəsimində şagirdin kodunu yeniləməyə kömək edir
+  progress: {
+    type: Map,
+    of: new Schema({
+      questionId: { type: String, required: true },
+      code: { type: String, default: '' },
+      testStatuses: [{ type: String, enum: ['waiting', 'checking', 'passed', 'failed'] }],
+      compilerError: { type: String, default: null },
+      userPassedCount: { type: Number, default: 0 },
+      score: { type: Number, default: 0 }
+    })
+  }
+}, { timestamps: true });
+
+// Yarış və Şagird cütlüyünün unikal olmasını təmin edirik (Bir şagird bir yarışa 1 dəfə qatıla bilər)
+SubmissionSchema.index({ contestId: 1, studentId: 1 }, { unique: true });
+
+export const Submission = model<ISubmission>('Submission', SubmissionSchema);

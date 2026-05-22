@@ -49,6 +49,8 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
 
   return (
     <div className="flex min-h-screen bg-[#bfe3f0] text-slate-800 font-sans overflow-x-hidden relative select-none">
+
+      
       
       {/* DEKORATİV ARXA FON ELEMENTLƏRİ */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-gradient-to-b from-[#eef9f1] to-transparent pointer-events-none z-0" />
@@ -157,6 +159,8 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
           )}
         </div>
       )}
+
+
 
       {/* ƏSAS KONTENT SAHƏSİ (FULL SCREEN ARENA - AÇIQ FONLU) */}
       <main className="flex-1 min-h-screen relative z-10">
