@@ -36,29 +36,38 @@ export default function Home() {
   }, []);
 
   // İstifadəçinin vəziyyətinə görə modal daxili ekranı təyin etmək
-  useEffect(() => {
-    if (userData && !isLogout) {
-      if (userData.isBlocked) {
-        setIsLoginOpen(true); // Blok pəncərəsi görünsün
-        setRegStep(1);
-      } else if (!userData.isRegistered) {
-        setIsLoginOpen(true); // Ad/Avatar seçimi üçün modal AÇIQ qalsın
-        setRegStep(2);
-      } else {
-        // Tam qeydiyyatlıdırsa birbaşa göndər
-        setIsLoginOpen(false);
-        navigateTo('/student/learning');
-      }
+ // ? İstifadəçinin vəziyyətinə görə modal daxili ekranı təyin etmək
+useEffect(() => {
+  if (userData && !isLogout) {
+    if (userData.isBlocked) {
+      setIsLoginOpen(true); 
+      setRegStep(1);
+    } else if (!userData.isRegistered) {
+      setIsLoginOpen(true); 
+      setRegStep(2);
+    } else {
+      setIsLoginOpen(false);
+      navigateTo('/student/learning');
     }
+  }
 
-    if (isLogout) {
-      setIsLoginOpen(true); // Loqout varsa, giriş modalını açıq saxla
-      setRegStep(1); // Google login ekranını göstər
-      logout(); // Sessiyanı təmizlə ki, middleware də işləsin və qorunan səhifələrə giriş olmasın
-      setUserData(null); // Context məlumatını da təmizlə
+  if (isLogout) {
+    setIsLoginOpen(true); 
+    setRegStep(1); 
+    logout(); 
+    setUserData(null); 
+    
+    // 🔥 DÖNGÜYÜ KIRAN KRİTİK DÜZELTME: URL'deki ?logout=true parametresini temizliyoruz
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('logout');
+      // Sayfayı yenilemeden URL'i temizler
+      window.history.replaceState({}, '', url.pathname);
+      setIsLogout(false); // State'i de sıfırlıyoruz
     }
+  }
 
-  }, [userData, navigateTo, isLogout, logout, setUserData]);
+}, [userData, navigateTo, isLogout, logout, setUserData]);
 
   // 1. Google Girişini yeni kiçik pəncərədə açmaq üçün funksiya
   const handleGoogleSignIn = () => {
