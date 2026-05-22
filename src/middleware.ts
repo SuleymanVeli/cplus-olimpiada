@@ -20,7 +20,7 @@ export async function middleware(request: NextRequest) {
     // Onu birbaşa ana səhifəyə yönləndiririk
 
 
-    return NextResponse.redirect(new URL('/?logout=true', request.url));
+    // return NextResponse.redirect(new URL('/?logout=true', request.url));
   }
 
   // Hər şey qaydasındadırsa, keçidə icazə ver
