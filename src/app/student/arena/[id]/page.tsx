@@ -63,7 +63,7 @@ function useSequentialTypewriter(text: string, speed: number = 8, startTrigger: 
     }
 
     let index = 0;
-    
+
     const timer = setInterval(() => {
       setDisplayedText((prev) => {
         if (prev.length < text.length) {
@@ -236,7 +236,7 @@ export default function DynamicArenaPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             type: 'task',
-            userId: userData?._id || '', 
+            userId: userData?._id || '',
             id: task._id,
             code: editorValue
           })
@@ -278,7 +278,7 @@ export default function DynamicArenaPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#eef9f1] via-[#f4fbf7] to-[#ffffff] text-slate-700 font-sans select-none pb-20 relative">
-      
+
       {/* Şən Bulud Arxa Fon Dekorasiyası */}
       <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(#2ecc71_1.5px,transparent_1.5px)] [background-size:24px_24px]"></div>
 
@@ -308,13 +308,13 @@ export default function DynamicArenaPage() {
         {/* 🦊 ETAP 1 & 2: SOLA MEYİLLİ MENTOR HEYVANO VE ONUN METNLERİ */}
         {mentorAnimal && (
           <div className="w-full flex items-start gap-5 animate-avatar-left self-start max-w-[88%]">
-            
+
             {/* HEYVAN AVATARI */}
             <div className="flex flex-col items-center flex-shrink-0">
               <div className="w-18 h-18 rounded-full overflow-hidden border-4 border-emerald-400 bg-white shadow-md transition-transform duration-300 hover:scale-105">
-                <img 
-                  src={`/animals/${mentorAnimal.image}`} 
-                  alt={mentorAnimal.nameAz} 
+                <img
+                  src={`/animals/${mentorAnimal.image}`}
+                  alt={mentorAnimal.nameAz}
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -325,7 +325,7 @@ export default function DynamicArenaPage() {
 
             {/* YAZILARI OLAN BÖLMƏ */}
             <div className="flex-1 bg-white border-3 border-emerald-300 p-5 rounded-[28px] rounded-tl-none shadow-md space-y-4 relative text-left animate-bubble-in">
-              
+
               {/* Salamlaşma və ya Yoxlama Mətni */}
               <div className="bg-emerald-50 border-2 border-emerald-100 p-3 rounded-2xl flex gap-2 items-center">
                 <Smile className="text-emerald-500 flex-shrink-0" size={18} />
@@ -371,7 +371,8 @@ export default function DynamicArenaPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t-2 border-slate-100 transition-all duration-300 animate-fade-in">
                   <div className="bg-sky-50 p-3 rounded-xl border-2 border-sky-100">
                     <span className="font-black text-sky-500 text-[10px] uppercase tracking-wider block mb-0.5">Nə daxil olacaq? (Giriş)</span>
-                    <p className="text-slate-600 text-xs font-mono font-bold m-0 leading-tight">
+                    {/* whitespace-pre-wrap əlavə edildi */}
+                    <p className="text-slate-600 text-xs font-mono font-bold m-0 leading-tight whitespace-pre-wrap">
                       {inputAnim.displayedText}
                       {!inputAnim.isFinished && descAnim.isFinished && (
                         <span className="inline-block w-1.5 h-3 bg-sky-500 ml-0.5 animate-pulse">|</span>
@@ -380,7 +381,8 @@ export default function DynamicArenaPage() {
                   </div>
                   <div className="bg-purple-50 p-3 rounded-xl border-2 border-purple-100">
                     <span className="font-black text-purple-500 text-[10px] uppercase tracking-wider block mb-0.5">Ekrana nə çıxacaq? (Çıxış)</span>
-                    <p className="text-slate-600 text-xs font-mono font-bold m-0 leading-tight">
+                    {/* whitespace-pre-wrap əlavə edildi */}
+                    <p className="text-slate-600 text-xs font-mono font-bold m-0 leading-tight whitespace-pre-wrap">
                       {outputAnim.displayedText}
                       {!outputAnim.isFinished && inputAnim.isFinished && (
                         <span className="inline-block w-1.5 h-3 bg-purple-500 ml-0.5 animate-pulse">|</span>
@@ -393,11 +395,13 @@ export default function DynamicArenaPage() {
               {/* Nümunə Test Bloku */}
               {sampleCase && isIntroDone && (
                 <div className="flex flex-col sm:flex-row gap-3 pt-1 transition-all duration-500 animate-pop-in">
-                  <div className="flex-1 bg-slate-900 text-emerald-400 p-3 rounded-xl font-mono text-xs shadow-inner">
+                  {/* whitespace-pre-wrap əlavə edildi */}
+                  <div className="flex-1 bg-slate-900 text-emerald-400 p-3 rounded-xl font-mono text-xs shadow-inner whitespace-pre-wrap">
                     <span className="text-[9px] text-slate-400 font-sans font-black block mb-0.5 uppercase">Nümunə Giriş:</span>
                     {sampleCase.input}
                   </div>
-                  <div className="flex-1 bg-slate-900 text-sky-400 p-3 rounded-xl font-mono text-xs shadow-inner">
+                  {/* whitespace-pre-wrap əlavə edildi */}
+                  <div className="flex-1 bg-slate-900 text-sky-400 p-3 rounded-xl font-mono text-xs shadow-inner whitespace-pre-wrap">
                     <span className="text-[9px] text-slate-400 font-sans font-black block mb-0.5 uppercase">Nümunə Çıxış:</span>
                     {sampleCase.output}
                   </div>
@@ -410,24 +414,24 @@ export default function DynamicArenaPage() {
         {/* 👦 ETAP 3: SAĞA MEYİLLİ STRUKTUR - EDİTÖR SAHƏSİ */}
         {isIntroDone && (
           <div className="w-full flex items-start gap-5 self-end flex-row-reverse max-w-[94%] animate-student-layout">
-            
+
             {/* ŞAGİRDİN AVATARI */}
             <div className="flex flex-col items-center flex-shrink-0 animate-pop-in">
               <div className="w-18 h-18 rounded-full overflow-hidden border-4 border-sky-400 bg-white shadow-md flex items-center justify-center transition-transform duration-300 hover:scale-105">
-                <img 
-                  src={`/avatars/avatar-${userData?.avatar || 1}.png`} 
-                  alt={userData?.fullName || "Qəhrəman"} 
-                  className="w-full h-full object-cover" 
+                <img
+                  src={`/avatars/avatar-${userData?.avatar || 1}.png`}
+                  alt={userData?.fullName || "Qəhrəman"}
+                  className="w-full h-full object-cover"
                 />
               </div>
               <span className="mt-1.5 bg-sky-400 text-white font-black text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wide shadow-sm">
-                 {userData?.fullName || "QƏHRƏMAN"}
+                {userData?.fullName || "QƏHRƏMAN"}
               </span>
             </div>
 
             {/* EDİTÖRÜ VƏ CAVAB DÜYMƏLƏRİ OLAN HİSSƏ */}
             <div className="flex-1 bg-white border-3 border-sky-300 p-5 rounded-[28px] rounded-tr-none shadow-md space-y-4 text-right animate-bubble-in">
-              
+
               <div className="text-left">
                 <span className="text-[10px] font-black uppercase text-sky-500 tracking-wider block mb-1">💻 SƏNİN SEHRLİ C++ KODUN:</span>
                 <div className="rounded-2xl overflow-hidden border-3 border-slate-200 shadow-sm bg-white task-editor min-h-[350px]">

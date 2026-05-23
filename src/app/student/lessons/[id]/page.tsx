@@ -33,9 +33,9 @@ interface LessonData {
   _id: string;
   title: string;
   moduleTitle: string;
-  videoUrl?: string; 
-  content: string;    
-  nextTaskId?: string; 
+  videoUrl?: string;
+  content: string;
+  nextTaskId?: string;
   order?: number;
 }
 
@@ -54,7 +54,7 @@ function useSequentialTypewriter(text: string, speed: number = 8, startTrigger: 
     let index = 0;
     setDisplayedText('');
     setIsFinished(false);
-    
+
     const timer = setInterval(() => {
       setDisplayedText((prev) => prev + text.charAt(index));
       index++;
@@ -115,7 +115,7 @@ export default function InteractiveLessonPage() {
         _id: String(params.id),
         moduleTitle: 'GİRİŞ VƏ MƏLUMAT TİPLƏRİ',
         title: 'C++ Proqramının Əsas Strukturu və `cout`',
-        videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ', 
+        videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
         order: 3,
         content: `
           <h3>🚀 C++ Dünyasına Xoş Gəldiniz!</h3>
@@ -140,7 +140,7 @@ export default function InteractiveLessonPage() {
             💡 <strong>Qızıl Qayda:</strong> C++ dilində hər bir sətrin sonuna mütləq nöqtəli vergül (<code>;</code>) qoyulmalıdır! Unutsanız proqramınız inciyər.
           </div>
         `,
-        nextTaskId: 'next_task_101', 
+        nextTaskId: 'next_task_101',
       };
       setLesson(mockData);
       setupMentor(mockData);
@@ -190,7 +190,7 @@ export default function InteractiveLessonPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#eef9f1] via-[#f4fbf7] to-[#ffffff] text-slate-700 font-sans select-none pb-20 relative">
-      
+
       {/* Şən Bulud Arxa Fon Dekorasiyası */}
       <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(#2ecc71_1.5px,transparent_1.5px)] [background-size:24px_24px]"></div>
 
@@ -217,17 +217,17 @@ export default function InteractiveLessonPage() {
 
       {/* 🗺️ DIALOG AXINI */}
       <div className="max-w-4xl mx-auto px-4 mt-8 space-y-8 flex flex-col">
-        
+
         {/* 🦊 ETAP 1 & 2: SOLA MEYİLLİ MENTOR HEYVANI VƏ ONUN VİDEO + CONTENT MESAJLARI */}
         {mentorAnimal && (
           <div className="w-full flex items-start gap-5 animate-avatar-left self-start max-w-[88%]">
-            
+
             {/* HEYVAN AVATARI */}
             <div className="flex flex-col items-center flex-shrink-0">
               <div className="w-18 h-18 rounded-full overflow-hidden border-4 border-emerald-400 bg-white shadow-md transition-transform duration-300 hover:scale-105">
-                <img 
-                  src={`/animals/${mentorAnimal.image}`} 
-                  alt={mentorAnimal.nameAz} 
+                <img
+                  src={`/animals/${mentorAnimal.image}`}
+                  alt={mentorAnimal.nameAz}
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -238,7 +238,7 @@ export default function InteractiveLessonPage() {
 
             {/* YAZILARI, VİDEONU VƏ CONTENTİ TUTAN BÖLMƏ (Avtomatik ardıcıl gəlir) */}
             <div className="flex-1 bg-white border-3 border-emerald-300 p-5 rounded-[28px] rounded-tl-none shadow-md space-y-5 relative text-left animate-bubble-in">
-              
+
               {/* Giriş Salamlaşma Mətni */}
               <div className="bg-emerald-50 border-2 border-emerald-100 p-3 rounded-2xl flex gap-2 items-center">
                 <Smile className="text-emerald-500 flex-shrink-0" size={18} />
@@ -256,26 +256,57 @@ export default function InteractiveLessonPage() {
                   <span className="text-[10px] font-black text-sky-500 uppercase tracking-wider flex items-center gap-1">
                     <Video size={14} /> Addım 1: Mövzu İzah Videosu
                   </span>
-                  <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-black border-3 border-slate-100 shadow-inner">
-                    <iframe
-                      src={lesson.videoUrl}
-                      title={lesson.title}
-                      className="absolute top-0 left-0 w-full h-full border-0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
+
+                  <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-slate-900 border-3 border-slate-100 shadow-inner flex flex-col items-center justify-center p-6 text-center select-none group">
+
+                    {/* VİDEO VARSA (Real link gələndə bura işləyəcək) */}
+                    {lesson.videoUrl == "coming_soon" && lesson.videoUrl.startsWith('http') ? (
+                      <iframe
+                        src={lesson.videoUrl}
+                        title={lesson.title}
+                        className="absolute top-0 left-0 w-full h-full border-0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    ) : (
+                      /* VİDEO HƏLƏ YOXDURSA: Maraqlı Oyunvari Animasiyalı Ekran */
+                      <div className="relative z-10 flex flex-col items-center gap-3 max-w-sm">
+                        {/* Animasiyalı sehrli popkorn/kino aparatı və ya emojilər */}
+                        <div className="relative flex items-center justify-center">
+                          <span className="text-5xl filter drop-shadow-md animate-bounce">🎬</span>
+                          <span className="absolute -top-1 -right-2 text-2xl animate-pulse delay-100">✨</span>
+                          <span className="absolute -bottom-1 -left-2 text-2xl animate-pulse delay-300">🍿</span>
+                        </div>
+
+                        <div className="space-y-1">
+                          <h4 className="text-sm font-black text-amber-400 uppercase tracking-wider m-0">
+                            Sehrli Laboratoriya Hazırlanır!
+                          </h4>
+                          <p className="text-slate-400 text-[11px] font-bold font-mono leading-normal m-0">
+                            Meşənin mühafizəçiləri bu mövzu üçün super bir video çəkir. Popkornları hazırla, çox yaxında bura yerləşdiriləcək! 🚀
+                          </p>
+                        </div>
+
+                        {/* Mini dekorativ yüklənmə xətti (Uşaqlar üçün vizual maraq) */}
+                        <div className="w-32 h-2 bg-slate-800 rounded-full overflow-hidden p-[2px] border border-slate-700 mt-1">
+                          <div className="h-full bg-gradient-to-r from-amber-400 to-emerald-400 rounded-full animate-[loadingBar_2s_infinite_linear] w-1/2" />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Arxa fon üçün gizli neon işıq effekti (Sadəcə vizual gözəllik üçün) */}
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(56,189,248,0.08)_0%,transparent_70%)] pointer-events-none" />
                   </div>
                 </div>
               )}
-
               {/* KONSPEKT / CONTENT (Video yükləndikdən sonra birbaşa gəlir, əlavə düymə yoxdur) */}
               {speechAnim.isFinished && (
                 <div className="space-y-3 pt-3 border-t-2 border-slate-100 transition-all duration-700 animate-fade-in">
                   <span className="text-[10px] font-black text-emerald-500 uppercase tracking-wider flex items-center gap-1">
                     <BookOpen size={14} /> Addım 2: Qısa Konspekt & Qeydlər
                   </span>
-                  
-                  <div 
+
+                  <div
                     className="lesson-content-container text-slate-600 text-xs sm:text-sm font-semibold leading-relaxed font-mono"
                     dangerouslySetInnerHTML={{ __html: lesson.content }}
                   />
@@ -289,18 +320,18 @@ export default function InteractiveLessonPage() {
         {/* 👨‍🏫 ETAP 3: SAĞA MEYİLLİ STRUKTUR - MENTOR YAZISI BİTDİKDƏ GƏLƏN SİZİN AVATARINIZ VƏ BUTON */}
         {speechAnim.isFinished && (
           <div className="w-full flex items-start gap-5 self-end flex-row-reverse max-w-[94%] animate-student-layout">
-            
+
             {/* SİZİN AVATARINIZ (MENTOR AVATAR) */}
             <div className="flex flex-col items-center flex-shrink-0 animate-pop-in">
               <div className="w-18 h-18 rounded-full overflow-hidden border-4 border-sky-400 bg-white shadow-md flex items-center justify-center transition-transform duration-300 hover:scale-105">
-                <img 
-                  src={`/avatars/avatar-${userData?.avatar || 1}.png`} 
-                  alt={userData?.fullName || "QƏHRƏMAN" } 
-                  className="w-full h-full object-cover" 
+                <img
+                  src={`/avatars/avatar-${userData?.avatar || 1}.png`}
+                  alt={userData?.fullName || "QƏHRƏMAN"}
+                  className="w-full h-full object-cover"
                 />
               </div>
               <span className="mt-1.5 bg-sky-400 text-white font-black text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wide shadow-sm">
-               {userData?.fullName || "QƏHRƏMAN"}
+                {userData?.fullName || "QƏHRƏMAN"}
               </span>
             </div>
 
@@ -309,7 +340,7 @@ export default function InteractiveLessonPage() {
               <div>
                 <span className="text-[9px] font-black text-sky-500 tracking-wider uppercase block mb-1">QƏHRƏMAN</span>
                 <p className="text-xs sm:text-sm font-black  m-0 leading-relaxed font-mono">
-                 "Çox sağ ol! Mühazirəni və izahı əla şəkildə bitirdim. Nəzəriyyə tərəfi tamdırsa, indi Arenaya keçib tapşırıqları həll edə bilərəm!"
+                  "Çox sağ ol! Mühazirəni və izahı əla şəkildə bitirdim. Nəzəriyyə tərəfi tamdırsa, indi Arenaya keçib tapşırıqları həll edə bilərəm!"
                 </p>
               </div>
 

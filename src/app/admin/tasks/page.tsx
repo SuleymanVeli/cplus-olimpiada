@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit3, Trash2, X, Loader2, Save, Layers, HelpCircle } from 'lucide-react';
+import { Plus, Edit3, Trash2, X, Loader2, Save, Layers, HelpCircle, Code, FileText } from 'lucide-react';
 
 interface TestCaseForm {
   input: string;
@@ -31,6 +31,10 @@ export default function AdminTasksPage() {
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
 
+  // Yeni əlavə olunan rejim state-i: 'form' və ya 'json'
+  const [activeTab, setActiveTab] = useState<'form' | 'json'>('form');
+  const [jsonInput, setJsonInput] = useState<string>('');
+
   const [form, setForm] = useState<TaskForm>({
     title: '',
     description: '',
@@ -45,7 +49,25 @@ export default function AdminTasksPage() {
     { input: '', output: '', isSample: false }
   ]);
 
-  // İlk növbədə filtrləmə üçün modulları API-dən çəkirik
+  // JSON şablonunu default olaraq gətirən funksiya
+  const getDefaultJsonTemplate = (nextOrder: number) => {
+    const template = {
+      title: "Nümunə Tapşırıq Adı",
+      description: "Məsələnin geniş şərti və ya nağılı bura yazılır.",
+      inputFormat: "Giriş verilənlərinin strukturu.",
+      outputFormat: "Çıxış verilənlərinin strukturu.",
+      constraints: "1 <= N <= 10^5",
+      points: 10,
+      order: nextOrder,
+      testCases: [
+        { input: "5 10", output: "15", isSample: true },
+        { input: "20 30", output: "50", isSample: false }
+      ]
+    };
+    return JSON.stringify(template, null, 2); // Avtomatik Beautify olunmuş format
+  };
+
+  // Modulları API-dən çəkirik
   useEffect(() => {
     async function loadModules() {
       try {
@@ -85,6 +107,9 @@ export default function AdminTasksPage() {
   const handleOpenCreateModal = () => {
     setEditingTaskId(null);
     setValidationError(null);
+    setActiveTab('form'); // Yeni yaradanda standart olaraq form ilə açılsın (istəsə JSON-a keçər)
+    
+    const nextOrder = tasks.length + 1;
     setForm({
       title: '',
       description: '',
@@ -92,15 +117,19 @@ export default function AdminTasksPage() {
       outputFormat: '',
       constraints: '',
       points: 10,
-      order: tasks.length + 1,
+      order: nextOrder,
     });
     setTestCases([{ input: '', output: '', isSample: false }]);
+    
+    // Default JSON şablonunu təyin edirik
+    setJsonInput(getDefaultJsonTemplate(nextOrder));
     setIsModalOpen(true);
   };
 
   const handleOpenEditModal = (task: any) => {
     setEditingTaskId(task._id);
     setValidationError(null);
+    setActiveTab('form'); 
     setForm({
       title: task.title,
       description: task.description,
@@ -110,7 +139,25 @@ export default function AdminTasksPage() {
       points: task.points,
       order: task.order,
     });
-    setTestCases(task.testCases || [{ input: '', output: '', isSample: false }]);
+    const mappedTestCases = task.testCases || [{ input: '', output: '', isSample: false }];
+    setTestCases(mappedTestCases);
+
+    // Redaktə rejmində də mövcud məlumatları JSON formatına salıb göstəririk
+    const currentTaskJson = {
+      title: task.title,
+      description: task.description,
+      inputFormat: task.inputFormat,
+      outputFormat: task.outputFormat,
+      constraints: task.constraints || '',
+      points: task.points,
+      order: task.order,
+      testCases: mappedTestCases.map((tc: any) => ({
+        input: tc.input,
+        output: tc.output,
+        isSample: tc.isSample
+      }))
+    };
+    setJsonInput(JSON.stringify(currentTaskJson, null, 2));
     setIsModalOpen(true);
   };
 
@@ -129,36 +176,81 @@ export default function AdminTasksPage() {
     setTestCases(updated);
   };
 
+  // Canlı JSON Beautify düyməsi funksiyası
+  const handleBeautifyJson = () => {
+    try {
+      const parsed = JSON.parse(jsonInput);
+      setJsonInput(JSON.stringify(parsed, null, 2));
+      setValidationError(null);
+    } catch (err: any) {
+      setValidationError(`Formatlama xətası: Sxem düzgün JSON deyil! (${err.message})`);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setValidationError(null);
 
-    // Form Validasiyası
-    if (!form.title.trim()) return setValidationError("Tapşırıq adı boş qala bilməz!");
-    if (!form.description.trim()) return setValidationError("Məsələnin şərti mütləq daxil edilməlidir!");
-    if (!form.inputFormat.trim()) return setValidationError("Giriş verilənlərinin formatı qeyd olunmalıdır!");
-    if (!form.outputFormat.trim()) return setValidationError("Çıxış verilənlərinin formatı qeyd olunmalıdır!");
-    
-    // Test Case Validasiyası
-    for (let i = 0; i < testCases.length; i++) {
-      if (!testCases[i].input.trim() || !testCases[i].output.trim()) {
-        return setValidationError(`Test Case #${i + 1}-in giriş və ya çıxış sahəsi boş qala bilməz!`);
+    let payload: any = { moduleId: selectedModuleId };
+
+    if (activeTab === 'form') {
+      // 1. Form Rejimi Validasiyası
+      if (!form.title.trim()) return setValidationError("Tapşırıq adı boş qala bilməz!");
+      if (!form.description.trim()) return setValidationError("Məsələnin şərti mütləq daxil edilməlidir!");
+      if (!form.inputFormat.trim()) return setValidationError("Giriş verilənlərinin formatı qeyd olunmalıdır!");
+      if (!form.outputFormat.trim()) return setValidationError("Çıxış verilənlərinin formatı qeyd olunmalıdır!");
+      
+      for (let i = 0; i < testCases.length; i++) {
+        if (!testCases[i].input.trim() || !testCases[i].output.trim()) {
+          return setValidationError(`Test Case #${i + 1}-in giriş və ya çıxış sahəsi boş qala bilməz!`);
+        }
+      }
+
+      payload = {
+        ...payload,
+        ...form,
+        testCases: testCases.map(tc => ({
+          input: tc.input.trim(),
+          output: tc.output.trim(),
+          isSample: tc.isSample
+        }))
+      };
+    } else {
+      // 2. JSON Rejimi Validasiyası
+      try {
+        const parsedJson = JSON.parse(jsonInput);
+
+        // Sahələrin daxildə yoxlanılması (Strict Validation)
+        if (!parsedJson.title?.trim()) return setValidationError("JSON Xətası: 'title' boş ola bilməz!");
+        if (!parsedJson.description?.trim()) return setValidationError("JSON Xətası: 'description' boş ola bilməz!");
+        if (!parsedJson.inputFormat?.trim()) return setValidationError("JSON Xətası: 'inputFormat' boş ola bilməz!");
+        if (!parsedJson.outputFormat?.trim()) return setValidationError("JSON Xətası: 'outputFormat' boş ola bilməz!");
+        if (typeof parsedJson.points !== 'number') return setValidationError("JSON Xətası: 'points' rəqəm tipində olmalıdır!");
+        if (typeof parsedJson.order !== 'number') return setValidationError("JSON Xətası: 'order' rəqəm tipində olmalıdır!");
+        
+        if (!Array.isArray(parsedJson.testCases) || parsedJson.testCases.length === 0) {
+          return setValidationError("JSON Xətası: 'testCases' massivi mütləq olmalı və ən azı 1 test case daxil edilməlidir!");
+        }
+
+        for (let i = 0; i < parsedJson.testCases.length; i++) {
+          const tc = parsedJson.testCases[i];
+          if (tc.input === undefined || tc.output === undefined) {
+            return setValidationError(`JSON Xətası: Test Case #${i + 1} daxilində 'input' və ya 'output' çatışmır!`);
+          }
+        }
+
+        payload = {
+          ...payload,
+          ...parsedJson
+        };
+      } catch (err: any) {
+        return setValidationError(`Sintaksis Xətası: JSON formatı tamamilə yanlışdır! (${err.message})`);
       }
     }
 
     setIsSubmitting(true);
     const url = editingTaskId ? `/api/admin/tasks/${editingTaskId}` : '/api/admin/tasks';
     const method = editingTaskId ? 'PUT' : 'POST';
-
-    const payload = {
-      ...form,
-      moduleId: selectedModuleId,
-      testCases: testCases.map(tc => ({
-        input: tc.input.trim(),
-        output: tc.output.trim(),
-        isSample: tc.isSample
-      }))
-    };
 
     try {
       const res = await fetch(url, {
@@ -214,7 +306,7 @@ export default function AdminTasksPage() {
           </button>
         </div>
 
-        {/* NORMALLAŞDIRILMIŞ TAPŞIRIQ CƏDVƏLİ */}
+        {/* TAPŞIRIQ CƏDVƏLİ */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           {isLoadingTasks ? (
             <div className="p-12 flex flex-col items-center justify-center gap-2 text-slate-400">
@@ -272,184 +364,240 @@ export default function AdminTasksPage() {
 
       </div>
 
-      {/* 🌟 ADD / EDIT ÜÇÜN BÖYÜK TAPŞIRIQ POP-UP-I */}
+      {/* 🌟 REJİMLİ ADD / EDIT MODAL POP-UP-I */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
           <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-3xl overflow-hidden max-h-[92vh] flex flex-col animate-scale-up">
             
             {/* Modal Header */}
-            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+            <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-slate-50/50">
               <div>
                 <h2 className="text-base font-black text-slate-900 uppercase tracking-tight">
                   {editingTaskId ? "📝 Tapşırığı Redaktə Et" : "⚔️ Yeni Arena Məsələsi Yarat"}
                 </h2>
                 <p className="text-[11px] font-bold text-slate-400 m-0">Wandbox kompilyatoru üçün test case-ləri tam dəqiq yazın.</p>
               </div>
+              
+              {/* Tab Seçimi (Form / JSON) */}
+              <div className="flex items-center gap-1 bg-slate-200/70 p-1 rounded-xl self-start sm:self-center">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('form')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${activeTab === 'form' ? 'bg-white text-sky-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  <FileText size={14} /> Form
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('json')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${activeTab === 'json' ? 'bg-white text-sky-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  <Code size={14} /> JSON Mode
+                </button>
+              </div>
+
               <button 
                 onClick={() => !isSubmitting && setIsModalOpen(false)}
                 disabled={isSubmitting}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-200/50 transition-all disabled:opacity-30"
+                className="absolute top-5 right-5 sm:relative sm:top-auto sm:right-auto text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-200/50 transition-all disabled:opacity-30"
               >
                 <X size={18} />
               </button>
             </div>
 
             {/* Modal Form Content */}
-            <form onSubmit={handleSubmit} className="overflow-y-auto p-6 space-y-4 flex-1">
+            <form onSubmit={handleSubmit} className="overflow-y-auto p-6 space-y-4 flex-1 flex flex-col">
               
               {validationError && (
-                <div className="bg-rose-50 border-2 border-rose-100 text-rose-700 px-4 py-2.5 rounded-xl font-bold text-xs">
+                <div className="bg-rose-50 border-2 border-rose-100 text-rose-700 px-4 py-2.5 rounded-xl font-bold text-xs whitespace-pre-wrap">
                   ⚠️ {validationError}
                 </div>
               )}
 
-              <div className="grid grid-cols-3 gap-4">
-                <div className="col-span-2">
-                  <label className="text-[11px] font-black text-slate-400 uppercase block mb-1">Məsələnin Adı (Title)</label>
-                  <input 
-                    type="text" disabled={isSubmitting}
-                    value={form.title}
-                    onChange={(e) => setForm({...form, title: e.target.value})}
-                    placeholder="Məsələn: İki ədədin cəmi"
-                    className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl font-bold text-xs outline-none focus:border-sky-500 disabled:bg-slate-50"
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] font-black text-slate-400 uppercase block mb-1">Modul İçi Sıra (Order)</label>
-                  <input 
-                    type="number" disabled={isSubmitting}
-                    value={form.order}
-                    onChange={(e) => setForm({...form, order: Number(e.target.value)})}
-                    className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl font-black text-xs outline-none focus:border-sky-500 disabled:bg-slate-50"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-[11px] font-black text-slate-400 uppercase block mb-1">Məsələnin Şərti / Nağılı (Description)</label>
-                <textarea 
-                  rows={4} disabled={isSubmitting}
-                  value={form.description}
-                  onChange={(e) => setForm({...form, description: e.target.value})}
-                  placeholder="Sehrli meşədə iki sincab qoz toplayır..."
-                  className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl font-medium text-xs outline-none focus:border-sky-500 font-mono leading-relaxed disabled:bg-slate-50"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[11px] font-black text-slate-400 uppercase block mb-1">Giriş Formatı (Input Format)</label>
-                  <input 
-                    type="text" disabled={isSubmitting}
-                    value={form.inputFormat}
-                    onChange={(e) => setForm({...form, inputFormat: e.target.value})}
-                    placeholder="Girişdə iki tam ədəd daxil edilir."
-                    className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl font-semibold text-xs outline-none focus:border-sky-500 disabled:bg-slate-50"
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] font-black text-slate-400 uppercase block mb-1">Çıxış Formatı (Output Format)</label>
-                  <input 
-                    type="text" disabled={isSubmitting}
-                    value={form.outputFormat}
-                    onChange={(e) => setForm({...form, outputFormat: e.target.value})}
-                    placeholder="Ekrana ədədlərin cəmini çıxarın."
-                    className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl font-semibold text-xs outline-none focus:border-sky-500 disabled:bg-slate-50"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div className="col-span-2">
-                  <label className="text-[11px] font-black text-slate-400 uppercase block mb-1">Məhdudiyyətlər (Constraints)</label>
-                  <input 
-                    type="text" disabled={isSubmitting}
-                    value={form.constraints}
-                    onChange={(e) => setForm({...form, constraints: e.target.value})}
-                    placeholder="Məsələn: 1 <= A, B <= 10^5"
-                    className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl font-bold text-xs outline-none focus:border-sky-500 font-mono disabled:bg-slate-50"
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] font-black text-slate-400 uppercase block mb-1">XP / Mükafat Balı</label>
-                  <input 
-                    type="number" disabled={isSubmitting}
-                    value={form.points}
-                    onChange={(e) => setForm({...form, points: Number(e.target.value)})}
-                    className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl font-black text-xs outline-none focus:border-sky-500 disabled:bg-slate-50"
-                  />
-                </div>
-              </div>
-
-              {/* DİNAMİK SUBDOCUMENT TEST CASE SƏTİRLƏRİ */}
-              <div className="border-2 border-dashed border-slate-200 p-4 rounded-2xl space-y-3 bg-slate-50/50">
-                <div className="flex justify-between items-center">
-                  <span className="text-[11px] font-black text-slate-500 tracking-wider uppercase flex items-center gap-1">
-                    <HelpCircle size={14} className="text-sky-500" /> WANDBOX REALLIĞI: TEST CASE-LƏR
-                  </span>
-                  <button
-                    type="button"
-                    disabled={isSubmitting}
-                    onClick={handleAddTestCaseRow}
-                    className="bg-white hover:bg-sky-50 text-sky-600 border border-slate-200 font-black text-[10px] px-2.5 py-1.5 rounded-lg uppercase tracking-wide transition-all flex items-center gap-1 disabled:opacity-50"
-                  >
-                    + Yeni Test Əlavə Et
-                  </button>
-                </div>
-
-                {testCases.map((tc, index) => (
-                  <div key={index} className="flex flex-col sm:flex-row gap-3 items-end sm:items-center bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-                    <div className="flex-1 w-full">
-                      <span className="text-[9px] font-bold text-slate-400 block uppercase mb-0.5">Giriş (Input)</span>
-                      <textarea
-                        rows={1} required disabled={isSubmitting}
-                        value={tc.input}
-                        onChange={(e) => handleTestCaseChange(index, 'input', e.target.value)}
-                        placeholder="Məs: 5 10"
-                        className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-xs font-mono outline-none focus:border-sky-400 disabled:bg-slate-50"
+              {/* 1. SEKTOR: STANDART FORM REJİMİ */}
+              {activeTab === 'form' && (
+                <div className="space-y-4 flex-1">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="col-span-2">
+                      <label className="text-[11px] font-black text-slate-400 uppercase block mb-1">Məsələnin Adı (Title)</label>
+                      <input 
+                        type="text" disabled={isSubmitting}
+                        value={form.title}
+                        onChange={(e) => setForm({...form, title: e.target.value})}
+                        placeholder="Məsələn: İki ədədin cəmi"
+                        className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl font-bold text-xs outline-none focus:border-sky-500 disabled:bg-slate-50"
                       />
                     </div>
-                    <div className="flex-1 w-full">
-                      <span className="text-[9px] font-bold text-slate-400 block uppercase mb-0.5">Gözlənilən Çıxış (Output)</span>
-                      <textarea
-                        rows={1} required disabled={isSubmitting}
-                        value={tc.output}
-                        onChange={(e) => handleTestCaseChange(index, 'output', e.target.value)}
-                        placeholder="Məs: 15"
-                        className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-xs font-mono outline-none focus:border-sky-400 disabled:bg-slate-50"
+                    <div>
+                      <label className="text-[11px] font-black text-slate-400 uppercase block mb-1">Modul İçi Sıra (Order)</label>
+                      <input 
+                        type="number" disabled={isSubmitting}
+                        value={form.order}
+                        onChange={(e) => setForm({...form, order: Number(e.target.value)})}
+                        className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl font-black text-xs outline-none focus:border-sky-500 disabled:bg-slate-50"
                       />
-                    </div>
-                    
-                    <div className="flex items-center gap-2 sm:pt-4">
-                      <div className="flex items-center gap-1 bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-200">
-                        <input
-                          type="checkbox"
-                          disabled={isSubmitting}
-                          checked={tc.isSample}
-                          id={`modal-sample-${index}`}
-                          onChange={(e) => handleTestCaseChange(index, 'isSample', e.target.checked)}
-                          className="w-3.5 h-3.5 text-sky-600 border-slate-300 rounded"
-                        />
-                        <label htmlFor={`modal-sample-${index}`} className="text-[10px] font-black text-slate-400 cursor-pointer select-none whitespace-nowrap">Nümunə</label>
-                      </div>
-
-                      {testCases.length > 1 && (
-                        <button
-                          type="button"
-                          disabled={isSubmitting}
-                          onClick={() => handleRemoveTestCaseRow(index)}
-                          className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1.5 rounded-lg transition-all disabled:opacity-30"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      )}
                     </div>
                   </div>
-                ))}
-              </div>
+
+                  <div>
+                    <label className="text-[11px] font-black text-slate-400 uppercase block mb-1">Məsələnin Şərti / Nağılı (Description)</label>
+                    <textarea 
+                      rows={4} disabled={isSubmitting}
+                      value={form.description}
+                      onChange={(e) => setForm({...form, description: e.target.value})}
+                      placeholder="Sehrli meşədə iki sincab qoz toplayır..."
+                      className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl font-medium text-xs outline-none focus:border-sky-500 font-mono leading-relaxed disabled:bg-slate-50"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[11px] font-black text-slate-400 uppercase block mb-1">Giriş Formatı (Input Format)</label>
+                      <input 
+                        type="text" disabled={isSubmitting}
+                        value={form.inputFormat}
+                        onChange={(e) => setForm({...form, inputFormat: e.target.value})}
+                        placeholder="Girişdə iki tam ədəd daxil edilir."
+                        className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl font-semibold text-xs outline-none focus:border-sky-500 disabled:bg-slate-50"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-black text-slate-400 uppercase block mb-1">Çıxış Formatı (Output Format)</label>
+                      <input 
+                        type="text" disabled={isSubmitting}
+                        value={form.outputFormat}
+                        onChange={(e) => setForm({...form, outputFormat: e.target.value})}
+                        placeholder="Ekrana ədədlərin cəmini çıxarın."
+                        className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl font-semibold text-xs outline-none focus:border-sky-500 disabled:bg-slate-50"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="col-span-2">
+                      <label className="text-[11px] font-black text-slate-400 uppercase block mb-1">Məhdudiyyətlər (Constraints)</label>
+                      <input 
+                        type="text" disabled={isSubmitting}
+                        value={form.constraints}
+                        onChange={(e) => setForm({...form, constraints: e.target.value})}
+                        placeholder="Məsələn: 1 <= A, B <= 10^5"
+                        className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl font-bold text-xs outline-none focus:border-sky-500 font-mono disabled:bg-slate-50"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-black text-slate-400 uppercase block mb-1">XP / Mükafat Balı</label>
+                      <input 
+                        type="number" disabled={isSubmitting}
+                        value={form.points}
+                        onChange={(e) => setForm({...form, points: Number(e.target.value)})}
+                        className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl font-black text-xs outline-none focus:border-sky-500 disabled:bg-slate-50"
+                      />
+                    </div>
+                  </div>
+
+                  {/* DİNAMİK TEST CASE SƏTİRLƏRİ */}
+                  <div className="border-2 border-dashed border-slate-200 p-4 rounded-2xl space-y-3 bg-slate-50/50">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[11px] font-black text-slate-500 tracking-wider uppercase flex items-center gap-1">
+                        <HelpCircle size={14} className="text-sky-500" /> TEST CASE-LƏR
+                      </span>
+                      <button
+                        type="button"
+                        disabled={isSubmitting}
+                        onClick={handleAddTestCaseRow}
+                        className="bg-white hover:bg-sky-50 text-sky-600 border border-slate-200 font-black text-[10px] px-2.5 py-1.5 rounded-lg uppercase tracking-wide transition-all flex items-center gap-1 disabled:opacity-50"
+                      >
+                        + Yeni Test Əlavə Et
+                      </button>
+                    </div>
+
+                    {testCases.map((tc, index) => (
+                      <div key={index} className="flex flex-col sm:flex-row gap-3 items-end sm:items-center bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                        <div className="flex-1 w-full">
+                          <span className="text-[9px] font-bold text-slate-400 block uppercase mb-0.5">Giriş (Input)</span>
+                          <textarea
+                            rows={1} required disabled={isSubmitting}
+                            value={tc.input}
+                            onChange={(e) => handleTestCaseChange(index, 'input', e.target.value)}
+                            placeholder="Məs: 5 10"
+                            className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-xs font-mono outline-none focus:border-sky-400 disabled:bg-slate-50"
+                          />
+                        </div>
+                        <div className="flex-1 w-full">
+                          <span className="text-[9px] font-bold text-slate-400 block uppercase mb-0.5">Gözlənilən Çıxış (Output)</span>
+                          <textarea
+                            rows={1} required disabled={isSubmitting}
+                            value={tc.output}
+                            onChange={(e) => handleTestCaseChange(index, 'output', e.target.value)}
+                            placeholder="Məs: 15"
+                            className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-xs font-mono outline-none focus:border-sky-400 disabled:bg-slate-50"
+                          />
+                        </div>
+                        
+                        <div className="flex items-center gap-2 sm:pt-4">
+                          <div className="flex items-center gap-1 bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-200">
+                            <input
+                              type="checkbox"
+                              disabled={isSubmitting}
+                              checked={tc.isSample}
+                              id={`modal-sample-${index}`}
+                              onChange={(e) => handleTestCaseChange(index, 'isSample', e.target.checked)}
+                              className="w-3.5 h-3.5 text-sky-600 border-slate-300 rounded"
+                            />
+                            <label htmlFor={`modal-sample-${index}`} className="text-[10px] font-black text-slate-400 cursor-pointer select-none whitespace-nowrap">Nümunə</label>
+                          </div>
+
+                          {testCases.length > 1 && (
+                            <button
+                              type="button"
+                              disabled={isSubmitting}
+                              onClick={() => handleRemoveTestCaseRow(index)}
+                              className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1.5 rounded-lg transition-all disabled:opacity-30"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 2. SEKTOR: SƏLİQƏLİ VƏ VALIDASIYALI JSON REJİMİ */}
+              {activeTab === 'json' && (
+                <div className="flex flex-col flex-1 min-h-[350px] space-y-2">
+                  <div className="flex justify-between items-center">
+                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider">
+                      Məsələnin Tam Sxemi (JSON)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleBeautifyJson}
+                      className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wide transition-all shadow-sm"
+                    >
+                      ✨ Formatı Səliqəyə Sal (Beautify)
+                    </button>
+                  </div>
+                  <div className="flex-1 relative border-2 border-slate-200 rounded-2xl overflow-hidden shadow-inner bg-slate-900">
+                    <textarea
+                      value={jsonInput}
+                      onChange={(e) => setJsonInput(e.target.value)}
+                      disabled={isSubmitting}
+                      spellCheck={false}
+                      className="w-full h-full p-4 text-xs font-mono text-emerald-400 bg-slate-900 outline-none resize-none leading-relaxed focus:ring-1 focus:ring-sky-500 disabled:opacity-60"
+                      // placeholder="{\n  \"title\": \"...\"\n}"
+                      style={{ minHeight: '320px' }}
+                    />
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-medium italic">
+                    * Qeyd: Struktur tam JSON standartlarına uyğun olmalı, dırnaq işarələrinə diqqət edilməlidir.
+                  </span>
+                </div>
+              )}
 
               {/* Modal Pop-up Footer Actions */}
-              <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 bg-white">
+              <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 bg-white mt-auto">
                 <button
                   type="button"
                   onClick={() => !isSubmitting && setIsModalOpen(false)}

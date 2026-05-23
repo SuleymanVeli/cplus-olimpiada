@@ -53,3 +53,8 @@ body {
 .parse-content strong {
   color: #4f46e5;
 }
+
+@keyframes loadingBar {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
