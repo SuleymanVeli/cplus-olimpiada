@@ -1,35 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectToDatabase from '@/src/lib/dbConnect';
-import { Contest } from '@/models/Contest';
-import { Submission } from '@/models/Submission';
-
-// Wandbox API-ə sorğu göndərən daxili köməkçi funksiya
-async function executeCodeOnWandbox(code: string, stdin: string) {
-  const response = await fetch("https://wandbox.org/api/compile.json", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      code: code,
-      stdin: stdin,
-      compiler: "gcc-head",
-      save: false
-    })
-  });
-  return await response.json();
-}
+import Contest from '@/models/Contest';
+import Submission from '@/models/Submission';
+import CodeQueue from '@/models/CodeQueue'; // 👈 Yeni modeli daxil edirik
 
 export async function POST(req: NextRequest) {
   try {
     await connectToDatabase();
-    
-    
-    const body :any  = await req.json();
-    
-    const { contestId, questionId, code } = body;
+    const body: any = await req.json();
+    const { contestId, questionId, studentId, code } = body;
 
-    const studentId = "65f1a2b3c4d5e6f7a8b9c0d1"; // Mock Auth Student ID
-
-    // 1. Yarışı və məhz bu sualın GİZLİ real testlərini gətiririk
+    // 1. Məsələnin varlığını yoxlayırıq
     const contest = await Contest.findById(contestId);
     const question = contest?.questions.find((q: any) => q.id === questionId);
 
@@ -37,66 +18,48 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Məsələ tapılmadı' }, { status: 404 });
     }
 
-    let passedCount = 0;
-    let compilerError: string | null = null;
-    let testStatuses: ('passed' | 'failed')[] = [];
-
-    // 2. Bütün gizli testləri dövrlə yoxlayırıq
-    for (const test of question.testCases) {
-      const result = await executeCodeOnWandbox(code, test.input);
-
-      if (result.compiler_error) {
-        compilerError = result.compiler_error;
-        break; // Sintaksis xətası varsa digər testləri gözlətmədən dövrü qırırıq
-      }
-
-      // whitespace-ləri təmizləyib yoxlayırıq
-      const cleanUserOutput = result.program_message?.trim();
-      const cleanExpectedOutput = test.expectedOutput.trim();
-
-      if (cleanUserOutput === cleanExpectedOutput) {
-        testStatuses.push('passed');
-        passedCount++;
-      } else {
-        testStatuses.push('failed');
-      }
+    // 2. Şagirdin əsas Submission sənədini tapırıq və ya yaradırıq
+    let submission = await Submission.findOne({ contestId, studentId });
+    
+    // Əgər ilk dəfə kod göndərirsə və submission yoxdursa, yarada bilərsən
+    if (!submission) {
+       submission = await Submission.create({ contestId, studentId, progress: new Map() });
     }
 
-    // 3. Qazanılan xalın hesablanması
-    const pointsEarned = passedCount * question.pointsPerTest;
-
-    // 4. Şagirdin gedişat cədvəlini (Submission) güncləyirik
-    // const submission = await Submission.findOne({ contestId, studentId });
+    // 3. Şagird tərəfdə yüklənmə (loader) görünməsi üçün test statuslarını 'checking' (və ya 'waiting') edirik
+    const initialTestStatuses = new Array(question.testCases.length).fill('checking');
     
-    // if (submission) {
-    //   submission.progress.set(questionId, {
-    //     questionId,
-    //     code,
-    //     testStatuses,
-    //     compilerError,
-    //     userPassedCount: passedCount,
-    //     score: pointsEarned
-    //   });
+    submission.progress.set(questionId, {
+      questionId,
+      code,
+      testStatuses: initialTestStatuses,
+      compilerError: null,
+      userPassedCount: 0,
+      score: 0
+    });
+    await submission.save();
 
-    //   // Bütün digər tapşırıqlardan yığılan yekun balı hesablayırıq
-    //   let newTotalScore = 0;
-    //   submission.progress.forEach(p => {
-    //     newTotalScore += p.score;
-    //   });
-    //   submission.totalScore = newTotalScore;
+    // 4. İŞİ NÖVBƏYƏ ATIRIQ 🚀
+    // Əgər eyni sual üçün növbədə artıq gözləyən köhnə bir kod varsa, onu silib yenisini qoyuruq
+    await CodeQueue.deleteOne({ submissionDocId: submission._id, questionId, status: 'queued' });
 
-    //   await submission.save();
-    // }
-
-    return NextResponse.json({
-      testStatuses,
-      compilerError,
-      userPassedCount: passedCount,
-      score: pointsEarned,
-      // totalScore: submission?.totalScore || 0
+    await CodeQueue.create({
+      submissionDocId: submission._id,
+      contestId,
+      studentId,
+      questionId,
+      code,
+      status: 'queued'
     });
 
+    // 5. Şagirdə dərhal "Növbəyə alındı" statusunu qaytarırıq. Taymer donmur!
+    return NextResponse.json({
+      success: true,
+      message: "Kod növbəyə alındı. Yoxlanılır...",
+      status: 'queued'
+    }, { status: 202 });
+
   } catch (error: any) {
-    return NextResponse.json({ message: 'Kompilyasiya xətası', error: error.message }, { status: 500 });
+    return NextResponse.json({ message: 'Növbəyə alma xətası', error: error.message }, { status: 500 });
   }
 }

@@ -1,4 +1,4 @@
-import { Schema, model, Document } from 'mongoose';
+import mongoose, { Schema, model, Document } from 'mongoose';
 
 export interface ISampleCase {
   input: string;
@@ -60,4 +60,4 @@ const ContestSchema = new Schema<IContest>({
   }]
 }, { timestamps: true });
 
-export const Contest = model<IContest>('Contest', ContestSchema);
+export default mongoose?.models?.Contest || mongoose?.model('Contest', ContestSchema);

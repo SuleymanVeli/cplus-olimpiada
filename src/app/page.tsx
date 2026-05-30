@@ -143,21 +143,9 @@ useEffect(() => {
             : 'bg-transparent border-b border-transparent'
           }`}
       >
-        <div className="flex items-center space-x-3 cursor-pointer group">
-          <div className="bg-[#00bac6] text-white font-black px-3 py-1 rounded-xl text-lg shadow-sm transition-transform group-hover:scale-105">
-            &gt;_
-          </div>
-          <span className="text-xl font-black tracking-wider text-emerald-800">
-            CODERS<span className="text-[#00bac6]">CUP</span>
-          </span>
-        </div>
+        
 
-        <button
-          onClick={() => setIsLoginOpen(true)}
-          className="bg-[#10b981] hover:bg-[#059669] text-white font-extrabold text-sm md:text-base px-6 py-2.5 rounded-full shadow-sm transition-all duration-200 transform hover:-translate-y-0.5"
-        >
-          {userData && userData.isRegistered ? "Arenaya Dön ⚔️" : "Giriş Et 🚀"}
-        </button>
+     
       </header>
 
       <main>

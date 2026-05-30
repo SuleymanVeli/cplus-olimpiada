@@ -17,4 +17,10 @@ const UserSchema = new mongoose.Schema({
   }]
 });
 
+UserSchema.virtual('submissions', {
+  ref: 'Submission',          // Əlaqəli modelin adı
+  localField: '_id',          // User modelindəki hansı sahə ilə bağlayırıq
+  foreignField: 'studentId'   // Submission modelində bu istifadəçi hansı adla qeyd olunub
+});
+
 export default mongoose.models.User || mongoose.model('User', UserSchema);

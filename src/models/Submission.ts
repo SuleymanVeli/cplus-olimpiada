@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { Schema, model, Document } from 'mongoose';
 
 export interface IQuestionProgress {
@@ -39,4 +40,6 @@ const SubmissionSchema = new Schema<ISubmission>({
 // Yarış və Şagird cütlüyünün unikal olmasını təmin edirik (Bir şagird bir yarışa 1 dəfə qatıla bilər)
 SubmissionSchema.index({ contestId: 1, studentId: 1 }, { unique: true });
 
-export const Submission = model<ISubmission>('Submission', SubmissionSchema);
+
+
+export default mongoose.models.Submission || mongoose.model<ISubmission>('Submission', SubmissionSchema);

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import CodeMirror from '@uiw/react-codemirror';
 import { cpp } from '@codemirror/lang-cpp';
@@ -8,6 +8,7 @@ import confetti from 'canvas-confetti';
 import { useTransition } from '@/src/context/TransitionContext';
 import { useUser } from '@/src/context/UserContext';
 import { ArrowLeft, Code2, Play, Smile, Clock, ChevronRight, ChevronLeft, Database, FileText, Loader2 } from 'lucide-react';
+import ArenaEndPopup from '@/src/models/ArenaEndPopup';
 
 const animalsData = [
   { id: 1, nameAz: "Canavar", image: "1.jpg" },
@@ -85,29 +86,43 @@ export default function DynamicArenaPage() {
 
   const { navigateTo, endTransition } = useTransition();
   const { userData } = useUser();
-  
+
   const [isLoading, setIsLoading] = useState(true);
   const [contest, setContest] = useState<ContestData | null>(null);
   const [dynamicState, setDynamicState] = useState<Record<string, QuestionProgress>>({});
   const [activeId, setActiveId] = useState<string>("");
   const [totalScore, setTotalScore] = useState(0);
-  
+
   const [timeLeftStr, setTimeLeftStr] = useState('00:00:00');
   const [timePercent, setTimePercent] = useState(100);
   const [hasIntroduced, setHasIntroduced] = useState(false);
 
   const saveTimeoutRef = useRef<Record<string, NodeJS.Timeout>>({});
 
+  const studentStartedAtRef = useRef<number | null>(null);
+
+  const [showEndPopup, setShowEndPopup] = useState(false);
+  const [popupType, setPopupType] = useState<'success' | 'timeout'>('success');
+
+
   const mentorSpeechText = `Yarış başladı! Suallar arasında sərbəst gəzə bilərsən. Yazdığın kodlar növbəti məsələyə keçəndə tam qorunacaq! Ox oxu, uğurlar! 🚀`;
   const speechAnim = useConditionalTypewriter(mentorSpeechText, !hasIntroduced && !isLoading, 4);
+
+
+
+  const triggerAutoPolling = (qId: string, contestData: ContestData) => {
+    validateCode(qId, contestData);
+  };
 
   // 1. DATA FETCHING (Baza İnteqrasiyası)
   useEffect(() => {
     async function initArena() {
       try {
-        const res = await fetch(`/api/contests/${contestId}`);
+
+        console.log("Contest ID:", userData);
+        const res = await fetch(`/api/contests/${contestId}?studentId=${userData?._id || ''}`);
         if (!res.ok) throw new Error("Məlumatlar yüklənmədi");
-        
+
         const data = await res.json();
         const fetchedContest: ContestData = data.contest;
         const submission = data.studentSubmission;
@@ -115,22 +130,40 @@ export default function DynamicArenaPage() {
         setContest(fetchedContest);
         setTotalScore(submission?.totalScore || 0);
 
+        studentStartedAtRef.current = submission?.createdAt
+          ? new Date(submission.createdAt).getTime()
+          : new Date().getTime();
+
         // Hər bir sual üçün ilkin state-i formalaşdırırıq (Bazada köhnə kod varsa bura oturur)
         const initialState: Record<string, QuestionProgress> = {};
         fetchedContest.questions.forEach((q) => {
           const savedProgress = submission?.progress?.[q._id];
           initialState[q._id] = {
             code: savedProgress?.code || `#include <iostream>\nusing namespace std;\n\nint main() {\n    // Tapşırıq ${q.codeName} üçün kodunuzu bura yazın 📝\n    return 0;\n}`,
+            // Əgər bazada 'checking' qalıbsa, elə 'checking' göstərsin, yoxdursa 'waiting'
             testStatuses: savedProgress?.testStatuses || new Array(q.totalTestCases).fill('waiting'),
             compilerError: savedProgress?.compilerError || null,
-            validationMessage: savedProgress?.userPassedCount === q.totalTestCases ? "Möhtəşəm! Bütün testlər uğurla keçdi! 🎉" : null,
+            validationMessage: savedProgress?.compilerError
+              ? "Sintaksis xətası tapıldı. Kodu yenidən yoxla! 🛠️"
+              : savedProgress?.userPassedCount === q.totalTestCases
+                ? "Möhtəşəm! Bütün testlər uğurla keçdi! 🎉"
+                : null,
             userPassedCount: savedProgress?.userPassedCount || 0
           };
         });
 
         setDynamicState(initialState);
+
+        const currentActiveId = submission?.activeQuestionId || fetchedContest.questions[0]._id;
         if (fetchedContest.questions.length > 0) {
-          setActiveId(submission?.activeQuestionId || fetchedContest.questions[0]._id);
+          setActiveId(currentActiveId);
+        }
+
+        // 🎯 POLLING-İ BURADA BAŞLADIRIQ (try-ın daxilində, hər şey hazır olandan sonra)
+        const activeProgress = submission?.progress?.[currentActiveId];
+        if (activeProgress?.testStatuses?.includes('checking')) {
+          // Funksiyanın closure-a ilişməməsi üçün activeId-ni ötürən xüsusi polling tetikleyicisi çağırırıq
+          setTimeout(() => triggerAutoPolling(currentActiveId, fetchedContest), 500);
         }
       } catch (err) {
         console.error("Arena yüklənmə xətası:", err);
@@ -140,8 +173,8 @@ export default function DynamicArenaPage() {
       }
     }
 
-    if (contestId) initArena();
-  }, [contestId]);
+    if (contestId && userData) initArena();
+  }, [contestId || '', userData, endTransition]);
 
   useEffect(() => {
     if (!hasIntroduced && speechAnim.isFinished) {
@@ -149,27 +182,58 @@ export default function DynamicArenaPage() {
     }
   }, [speechAnim.isFinished, hasIntroduced]);
 
-  // 2. TAYMER SİZTEMİ
+  // 2. TAYMER SİSTEMİ VƏ PROGRESS BAR HESABLANMASI
   useEffect(() => {
     if (!contest) return;
+
+    // Şagirdin bu sınaq üzrə daxil olduğu submission datasını tapırıq
+    // Qeyd: Yuxarıda məlumat fetchedContest-dən gəlir, likit state və ya verilənlər bazasından oxunur.
+    // API-dən gələn datada şagirdin ilk giriş tarixi yoxdursa, indiki zamanı əsas götürürük (fallback)
+
     const timer = setInterval(() => {
       const now = new Date().getTime();
-      const end = new Date(contest.endTime).getTime();
-      const diff = end - now;
+      const contestEnd = new Date(contest.endTime).getTime();
+
+      // Şagirdin fərdi başlama vaxtını təyin edirik
+      // Əgər API sənə submission daxilində `createdAt` göndərirsə, onu istifadə et. 
+      // Yoxdursa, şagird arenanı açdığı an onun fərdi taymeri işə düşür.
+      const initialSessionStart = studentStartedAtRef.current || new Date().getTime();
+
+      // Sınağın fərdi ümumi davam etmə müddəti (milisaniyə ilə)
+      const personalDurationMs = contest.durationMinutes * 60 * 1000;
+
+      // Şagirdin fərdi bitmə nöqtəsi
+      const personalEnd = initialSessionStart + personalDurationMs;
+
+      // Fərdi vaxt sınağın ümumi qapanma vaxtını (contestEnd) ötə bilməz
+      const actualEnd = Math.min(personalEnd, contestEnd);
+      const diff = actualEnd - now;
 
       if (diff <= 0) {
         setTimeLeftStr("00:00:00");
         setTimePercent(0);
         clearInterval(timer);
+        setPopupType('timeout');
+        setShowEndPopup(true);
+
+        // Bura sınaq bitəndə şagirdi avtomatik çıxarmaq və ya kodu dondurmaq üçün məntiq yaza bilərsən
       } else {
         const hours = Math.floor(diff / (1000 * 60 * 60));
         const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
         const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-        setTimeLeftStr(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
-        const totalDurationMs = contest.durationMinutes * 60 * 1000;
-        setTimePercent(Math.min(Math.max((diff / totalDurationMs) * 100, 0), 100));
+
+        // Saat, dəqiqə və saniyəni formatlayırıq
+        setTimeLeftStr(
+          `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+        );
+
+        // Progress bar faizinin dinamik və dəqiq hesablanması
+        // Şagirdin fərdi qalan vaxtını onun ümumi imtahan müddətinə bölürük
+        const percent = (diff / personalDurationMs) * 100;
+        setTimePercent(Math.min(Math.max(percent, 0), 100));
       }
     }, 1000);
+
     return () => clearInterval(timer);
   }, [contest]);
 
@@ -179,7 +243,7 @@ export default function DynamicArenaPage() {
       await fetch('/api/submissions/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contestId, questionId: qId, code: currentCode }),
+        body: JSON.stringify({ contestId, questionId: qId, code: currentCode, studentId: userData?._id || '' }),
       });
     } catch (err) {
       console.error("Avtomatik mentin yadda saxlanmasında xəta:", err);
@@ -195,7 +259,7 @@ export default function DynamicArenaPage() {
 
     saveTimeoutRef.current[activeId] = setTimeout(() => {
       syncCodeToBackend(activeId, newCode);
-    }, 1000); 
+    }, 1000);
   };
 
   const handleTabChange = async (nextId: string) => {
@@ -208,63 +272,131 @@ export default function DynamicArenaPage() {
   };
 
   // 4. REAL KOD SINAQI (Backend Validation API)
-  const [isValidating, setIsValidating] = useState(false);
-  const validateCode = async () => {
-    if (!contest || !activeId) return;
-    
-    setIsValidating(true);
+  // 4. REAL KOD SINAQI (Asinxron Backend Növbə İnteqrasiyası)
+
+  const [validatingId, setValidatingId] = useState<string | null>(null);
+const pollingRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Komponent unmount olunanda və ya sual dəyişəndə yarımçıq qalan taymeri təmizləmək üçün
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, [activeId]);
+
+  const validateCode = async (targetId?: string, currentContest?: ContestData) => {
+    // Əgər funksiya düymədən çağırılıbsa activeId-ni, auto-polling-dən çağırılıbsa ötürülən ID-ni əsas götürür
+    const idToValidate = targetId || activeId;
+    const activeContest = currentContest || contest;
+
+    if (!activeContest || !idToValidate || validatingId === idToValidate) return;
+
+    setValidatingId(idToValidate); // Sırf bu sualı bloklayırıq 🔒
+
     setDynamicState(prev => ({
       ...prev,
-      [activeId]: { 
-        ...prev[activeId], 
-        compilerError: null, 
-        testStatuses: prev[activeId].testStatuses.fill('checking'),
-        validationMessage: "Kod bulud serverlərində sınaqdan keçirilir... ⏳" 
+      [idToValidate]: {
+        ...prev[idToValidate],
+        compilerError: null,
+        testStatuses: prev[idToValidate].testStatuses.fill('checking'),
+        validationMessage: "Kod bulud serverlərində növbəyə alındı və sınaqdan keçirilir... ⏳"
       }
     }));
 
     try {
-      const response = await fetch('/api/submissions/validate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contestId,
-          questionId: activeId,
-          code: dynamicState[activeId].code
-        })
-      });
+      // Əgər çağırış düymədəndirsə (yəni targetId yoxdursa), API-a POST atıb növbəyə salırıq
+      if (!targetId) {
+        const response = await fetch('/api/submissions/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contestId,
+            questionId: idToValidate,
+            code: dynamicState[idToValidate].code,
+            studentId: userData?._id || ''
+          })
+        });
+        if (!response.ok) throw new Error("Növbəyə göndərilmə xətası");
+      }
 
-      const result = await response.json();
+      if (pollingRef.current) clearInterval(pollingRef.current);
 
-      setDynamicState(prev => ({
-        ...prev,
-        [activeId]: {
-          code: prev[activeId].code,
-          testStatuses: result.testStatuses || prev[activeId].testStatuses.fill('failed'),
-          compilerError: result.compilerError || null,
-          userPassedCount: result.userPassedCount ?? 0,
-          validationMessage: result.compilerError 
-            ? "Sintaksis xətası tapıldı. Kodu yenidən yoxla! 🛠️" 
-            : result.userPassedCount === result.testStatuses.length 
-              ? "Möhtəşəm! Bütün testlər uğurla keçdi! 🎉" 
-              : "Bəzi xətalar var, alqoritmini təkmilləşdir. 🦊"
+      // Short Polling dövrü başlayır
+      pollingRef.current = setInterval(async () => {
+        try {
+          const res = await fetch(`/api/contests/${contestId}?studentId=${userData?._id || ''}`);
+          if (!res.ok) return;
+
+          const data = await res.json();
+          const submission = data.studentSubmission;
+          const savedProgress = submission?.progress?.[idToValidate];
+
+          // Əgər iş bitibsə ('checking' statusu artıq yoxdursa)
+          if (savedProgress && savedProgress.testStatuses && !savedProgress.testStatuses.includes('checking')) {
+            if (pollingRef.current) clearInterval(pollingRef.current);
+            setValidatingId(null); // Kilidi tamamilə açırıq 🔓
+
+            setTotalScore(submission.totalScore || 0);
+            const totalTests = savedProgress.testStatuses.length;
+            const passedCount = savedProgress.userPassedCount || 0;
+
+            setDynamicState(prev => ({
+              ...prev,
+              [idToValidate]: {
+                code: prev[idToValidate].code,
+                testStatuses: savedProgress.testStatuses,
+                compilerError: savedProgress.compilerError || null,
+                userPassedCount: passedCount,
+                validationMessage: savedProgress.compilerError
+                  ? "Sintaksis xətası tapıldı. Kodu yenidən yoxla! 🛠️"
+                  : passedCount === totalTests
+                    ? "Möhtəşəm! Bütün testlər uğurla keçdi! 🎉"
+                    : "Bəzi xətalar var, alqoritmini təkmilləşdir. 🦊"
+              }
+            }));
+
+            if (!savedProgress.compilerError && passedCount === totalTests) {
+              confetti({ particleCount: 90, spread: 60 });
+
+              const isAllContestSolved = activeContest.questions.every((q) => {
+                if (q._id === idToValidate) return passedCount === q.totalTestCases;
+                const otherProgress = submission?.progress?.[q._id];
+                return (otherProgress?.userPassedCount || 0) === q.totalTestCases;
+              });
+
+              if (isAllContestSolved) {
+                setTimeout(() => {
+                  setPopupType('success');
+                  setShowEndPopup(true);
+                }, 1500);
+              }
+            }
+          }
+        } catch (pollErr) {
+          console.error("Polling xətası:", pollErr);
         }
-      }));
-
-      if (result.totalScore !== undefined) {
-        setTotalScore(result.totalScore);
-      }
-
-      if (!result.compilerError && result.userPassedCount === result.testStatuses.length) {
-        confetti({ particleCount: 90, spread: 60 });
-      }
+      }, 2000);
 
     } catch (err) {
-      console.error("Yoxlama zamanı gözlənilməz xəta:", err);
-    } finally {
-      setIsValidating(false);
+      console.error(err);
+      setValidatingId(null);
+      setDynamicState(prev => ({
+        ...prev,
+        [idToValidate]: {
+          ...prev[idToValidate],
+          testStatuses: prev[idToValidate].testStatuses.fill('waiting'),
+          validationMessage: "Sistem xətası baş verdi. Yenidən cəhd edin! ❌"
+        }
+      }));
     }
   };
+
+
+  const handleRedirect = useCallback(() => {
+    navigateTo('/student/learning'); // Sənin custom transition funksiyan
+  }, [navigateTo]);
+
+
 
   if (isLoading || !contest) {
     return (
@@ -282,10 +414,10 @@ export default function DynamicArenaPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#eef9f1] via-[#f4fbf7] to-[#ffffff] text-slate-700 font-sans select-none pb-20 relative w-full overflow-x-hidden">
-      
+
       {/* 🔴 SLIDER TAYMER */}
       <div className="w-full h-3 bg-slate-200 sticky top-0 z-50 overflow-hidden shadow-inner flex">
-        <div 
+        <div
           className="h-full bg-gradient-to-r from-cyan-400 via-sky-500 to-indigo-500 transition-all duration-1000 ease-linear relative"
           style={{ width: `${timePercent}%` }}
         >
@@ -313,7 +445,7 @@ export default function DynamicArenaPage() {
 
       {/* ƏSAS KONTENT */}
       <div className="w-full max-w-7xl mx-auto px-6 mt-6 space-y-6 flex flex-col">
-        
+
         {/* 2. TAB PANELİ */}
         <div className={`w-full bg-white border-3 border-slate-200 rounded-2xl p-3 flex items-center justify-between shadow-sm ${!hasIntroduced ? 'animate-step-tabs' : ''}`}>
           <button
@@ -323,7 +455,7 @@ export default function DynamicArenaPage() {
           >
             <ChevronLeft size={16} /> ƏVVƏLKİ
           </button>
-          
+
           <div className="flex gap-2">
             {contest.questions.map((q, idx) => {
               const isCurrent = q._id === activeId;
@@ -332,13 +464,12 @@ export default function DynamicArenaPage() {
                 <button
                   key={q._id}
                   onClick={() => handleTabChange(q._id)}
-                  className={`px-5 h-11 rounded-xl font-black text-xs border-2 transition-all flex items-center gap-2 border-b-4 ${
-                    isCurrent
-                      ? 'bg-cyan-500 border-cyan-600 text-white scale-105'
-                      : isSolved
-                        ? 'bg-emerald-100 border-emerald-400 text-emerald-700'
-                        : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
-                  }`}
+                  className={`px-5 h-11 rounded-xl font-black text-xs border-2 transition-all flex items-center gap-2 border-b-4 ${isCurrent
+                    ? 'bg-cyan-500 border-cyan-600 text-white scale-105'
+                    : isSolved
+                      ? 'bg-emerald-100 border-emerald-400 text-emerald-700'
+                      : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
+                    }`}
                 >
                   <span>Məsələ {q.codeName}</span>
                   <span className="text-[10px] bg-black/10 px-1.5 py-0.5 rounded font-mono">
@@ -480,17 +611,31 @@ export default function DynamicArenaPage() {
 
             <div className="flex justify-end">
               <button
-                onClick={validateCode}
-                disabled={isValidating}
+                onClick={() => validateCode()}
+                disabled={validatingId === activeId} // 👈 Tək boolean yox, ID yoxlaması
                 className="w-full sm:w-auto bg-gradient-to-r from-emerald-400 to-teal-500 text-white px-8 py-4 text-xs font-black rounded-xl border-b-[5px] border-emerald-600 active:border-b-0 active:translate-y-[5px] transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer uppercase tracking-widest"
               >
-                {isValidating ? "KOD SINAQDAN KEÇİRİLİR... ⏳" : <><Play size={12} fill="white" /> KODU YOXLAMAQA GÖNDƏR ✨</>}
+                {validatingId === activeId ? ( // 👈 Tək boolean yox, ID yoxlaması
+                  "KOD SINAQDAN KEÇİRİLİR... ⏳"
+                ) : (
+                  <>
+                    <Play size={12} fill="white" /> KODU YOXLAMAQA GÖNDƏR ✨
+                  </>
+                )}
               </button>
             </div>
           </div>
         </div>
 
       </div>
+
+      <ArenaEndPopup
+        isOpen={showEndPopup}
+        type={popupType}
+        totalScore={totalScore}
+        maxPossibleScore={maxPossibleScore}
+        onRedirect={handleRedirect}
+      />
 
       <style jsx global>{`
         @keyframes slideDownIn {

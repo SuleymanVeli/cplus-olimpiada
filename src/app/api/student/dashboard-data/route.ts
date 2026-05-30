@@ -4,7 +4,7 @@ import User from "@/models/User";
 import Task from "@/models/Task"; // Tapşırıq modelini import et
 import dbConnect from "@/lib/dbConnect";
 import { NextResponse } from "next/server";
-import {Submission} from "@/src/models/Submission";
+import Submission from "@/src/models/Submission";
 
 export async function GET() {
   const session:any = await getServerSession();
