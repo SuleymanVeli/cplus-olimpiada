@@ -39,7 +39,8 @@ export async function GET(
         startDirection: game.startDirection,
         targetX: game.targetX,
         targetY: game.targetY,
-        collectibles: game.collectibles
+        collectibles: game.collectibles,
+        order: game.order
       },
       userStatus: {
         hasPlayed: !!playedData,

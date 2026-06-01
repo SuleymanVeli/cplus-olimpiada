@@ -275,7 +275,7 @@ export default function DynamicArenaPage() {
   // 4. REAL KOD SINAQI (Asinxron Backend Növbə İnteqrasiyası)
 
   const [validatingId, setValidatingId] = useState<string | null>(null);
-const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
   // Komponent unmount olunanda və ya sual dəyişəndə yarımçıq qalan taymeri təmizləmək üçün
   useEffect(() => {

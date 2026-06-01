@@ -86,10 +86,10 @@ export default function MagiForestDashboard() {
 
         let mapTime = 0;
         function renderMap() {
-            mctx.clearRect(0, 0, mapCanvas.width, mapCanvas.height);
+            mctx.clearRect(0, 0, mapCanvas?.width || 0, mapCanvas?.height || 0);
             mapTime += 0.04;
             mctx.fillStyle = 'rgba(255,255,255,0.03)';
-            mctx.fillRect(0, 0, mapCanvas.width, mapCanvas.height);
+            mctx.fillRect(0, 0, mapCanvas?.width || 0, mapCanvas?.height || 0);
             mctx.lineCap = 'round'; mctx.lineJoin = 'round';
             mctx.beginPath(); mctx.lineWidth = 36; mctx.strokeStyle = 'rgba(4, 120, 87, 0.15)';
             points.forEach((p, i) => i === 0 ? mctx.moveTo(p.x, p.y + 4) : mctx.lineTo(p.x, p.y + 4));

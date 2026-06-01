@@ -1,12 +1,14 @@
-// app/student/arena/[taskId]/page.tsx
 'use client';
 
 import React, { useEffect, useRef, useState, use } from 'react';
 import { compileCppCode } from '@/utils/wandboxService';
 import { useUser } from '@/src/context/UserContext';
 import { useTransition } from '@/src/context/TransitionContext';
-
+import Image from 'next/image';
+import { Play, Square, RotateCcw, MapPin, Award } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import ReactCodeMirror from '@uiw/react-codemirror';
+import { cpp } from '@codemirror/lang-cpp';
 
 interface ExecutionStep {
   cmd: 'move' | 'left' | 'right';
@@ -37,6 +39,23 @@ interface GameData {
   collectibles: Collectible[];
 }
 
+// Heyvanlar məlumat bazası (Gələn order və ya index-ə görə uyğun heyvanı seçmək üçün)
+const animalsData = [
+  { id: 1, nameAz: "Canavar", nameEn: "Wolf", image: "1.jpg" },
+  { id: 2, nameAz: "Kirpi", nameEn: "Hedgehog", image: "2.jpg" },
+  { id: 3, nameAz: "Ayı", nameEn: "Bear", image: "3.jpg" },
+  { id: 4, nameAz: "Tısbağa", nameEn: "Turtle", image: "4.jpg" },
+  { id: 5, nameAz: "Bəbir", nameEn: "Leopard", image: "5.jpg" },
+  { id: 6, nameAz: "Sincab (Zolaqlı)", nameEn: "Chipmunk", image: "6.jpg" },
+  { id: 7, nameAz: "Maral", nameEn: "Deer", image: "7.jpg" },
+  { id: 8, nameAz: "Bayquş", nameEn: "Owl", image: "8.jpg" },
+  { id: 9, nameAz: "Sığın", nameEn: "Moose", image: "9.jpg" },
+  { id: 10, nameAz: "Dələ", nameEn: "Squirrel", image: "10.jpg" },
+  { id: 11, nameAz: "Bizon", nameEn: "Bison", image: "11.jpg" },
+  { id: 12, nameAz: "Tənbəllər", nameEn: "Sloth", image: "12.jpg" },
+  { id: 13, nameAz: "Surikat", nameEn: "Meerkat", image: "13.jpg" }
+];
+
 const GRID_SIZE = 80;
 const ROBOT_INPUT_NUMBER = "3";
 
@@ -44,30 +63,19 @@ const DEFAULT_CPP_CODE = `#include <iostream>
 using namespace std;
 
 int main() {
-    int addim;
-    cin >> addim;
-
-    for(int i = 0; i < addim; i++) {
-        cout << "duz get" << endl;
-    }
-    cout << "saga don" << endl;
-    cout << "duz get" << endl;
+    // Buraya robotu hərəkətə gətirəcək C++ kodunu yazacaqsınız.
     
     return 0;
 }`;
 
 export default function RealCompilerArena({ params }: { params: Promise<{ id: string }> }) {
-  // Next.js App Router-da dinamik params obyektini unwrap edirik
   const { id } = use(params);
-
   const { userData } = useUser();
-
   const { navigateTo, endTransition } = useTransition();
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const terminalRef = useRef<HTMLDivElement>(null);
 
-  // API State-ləri
   const [gameData, setGameData] = useState<GameData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -76,7 +84,7 @@ export default function RealCompilerArena({ params }: { params: Promise<{ id: st
   const [code, setCode] = useState(DEFAULT_CPP_CODE);
   const [isRunning, setIsRunning] = useState(false);
   const [terminalLogs, setTerminalLogs] = useState<{ type: 'system' | 'error' | 'step' | 'success'; text: string }[]>([
-    { type: 'system', text: '// 🤖 Wandbox API Terminalı aktivdir. Əmrlər gözlənilir...' }
+    { type: 'system', text: '// 🤖 Meşə Texnologiyası Terminalı aktivdir. Əmrlər gözlənilir...' }
   ]);
   const [activeStepIndex, setActiveStepIndex] = useState<number | null>(null);
   const [successSteps, setSuccessSteps] = useState<number[]>([]);
@@ -87,7 +95,11 @@ export default function RealCompilerArena({ params }: { params: Promise<{ id: st
 
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  // Robotun vəziyyətini idarə edən referans
+  console.log("GameData:", gameData);
+
+  // Arenanın sırasına uyğun gələn heyvanı tapırıq
+  const currentAnimal = gameData ? animalsData[(gameData.order-1 || 0) % animalsData.length] : animalsData[0];
+
   const robotRef = useRef({
     gridX: 0, gridY: 0, targetX: 40, targetY: 40, currentX: 40, currentY: 40,
     angle: 0, targetAngle: 0, speed: 3, frame: 0,
@@ -127,19 +139,14 @@ export default function RealCompilerArena({ params }: { params: Promise<{ id: st
     }
   });
 
-  // 1. Verilənlər Bazası API-dən məlumatların çəkilməsi
   useEffect(() => {
     async function fetchArenaData() {
       try {
-        // Id-yə görə tək bir oyunu gətirən API marşrutunuz (Əvvəlki addımda yazdığımız GET-ə uyğun)
         const res = await fetch(`/api/games/${id}?userId=${userData?._id}`);
         const result = await res.json();
 
-        if (result.gameData
-        ) {
+        if (result.gameData) {
           setGameData(result.gameData);
-
-          // Robotu gələn ilkin mövqeyə görə tənzimləyirik
           robotRef.current.reset(result.gameData);
         } else {
           setApiError(result.message || "Arena məlumatları tapılmadı.");
@@ -155,7 +162,6 @@ export default function RealCompilerArena({ params }: { params: Promise<{ id: st
     if (id && userData?._id) fetchArenaData();
   }, [id, userData?._id]);
 
-  // 2. Canvas Dövrü (Dinamik xəritə, hədəf və collectibles ilə)
   useEffect(() => {
     if (!gameData) return;
 
@@ -226,7 +232,6 @@ export default function RealCompilerArena({ params }: { params: Promise<{ id: st
     if (terminalRef.current) terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
   }, [terminalLogs, isTerminalExpanded]);
 
-  // 3. Robot Hərəkət Simulyasiyası (Dinamik divar və finiş yoxlanışı ilə)
   const startRobotMovement = async (steps: ExecutionStep[]) => {
     if (!gameData) return;
     setIsRunning(true);
@@ -237,26 +242,21 @@ export default function RealCompilerArena({ params }: { params: Promise<{ id: st
 
     for (let i = 0; i < steps.length; i++) {
       if (abortExecutionRef.current) {
-        setTerminalLogs(prev => [...prev, { type: 'error', text: '🛑 Simulyasiya istifadəçi tərəfindən dayandırıldı.' }]);
-        setIsRunning(false);
-        setActiveStepIndex(null);
-        return;
+        setTerminalLogs(prev => [...prev, { type: 'error', text: '🛑 Simulyasiya dayandırıldı.' }]);
+        setIsRunning(false); setActiveStepIndex(null); return;
       }
 
       const stepData = steps[i]; const cmd = stepData.cmd; setActiveStepIndex(i);
 
       if (cmd === 'move') {
-        // Robotun baxdığı bucağa görə növbəti addımı hesablayırıq
         let nx = r.gridX + Math.round(Math.cos(r.targetAngle));
         let ny = r.gridY + Math.round(Math.sin(r.targetAngle));
 
-        // Sərhəd və divar yoxlanışı
         if (nx >= 0 && nx < 5 && ny >= 0 && ny < 5 && gameData.mapLayout[ny][nx] === 0) {
           r.gridX = nx; r.gridY = ny; r.targetX = nx * GRID_SIZE + GRID_SIZE / 2; r.targetY = ny * GRID_SIZE + GRID_SIZE / 2;
         } else {
-          setTerminalLogs(prev => [...prev, { type: 'error', text: `💥 Robot divara və ya xəritə sərhədinə çırpıldı! (Xana: ${nx}, ${ny})` }]);
-          handleStopExecution();
-          return;
+          setTerminalLogs(prev => [...prev, { type: 'error', text: `💥 Robot əngələ çırpıldı! (Xana: ${nx + 1}, ${ny + 1})` }]);
+          handleStopExecution(); return;
         }
       } else if (cmd === 'left') r.targetAngle -= Math.PI / 2;
       else if (cmd === 'right') r.targetAngle += Math.PI / 2;
@@ -271,28 +271,20 @@ export default function RealCompilerArena({ params }: { params: Promise<{ id: st
     }
 
     if (!abortExecutionRef.current) {
-      // Hərəkət bitdikdən sonra hədəfə çatıb-çatmadığını yoxlayırıq
       if (r.gridX === gameData.targetX && r.gridY === gameData.targetY) {
-        setTerminalLogs(prev => [...prev, { type: 'success', text: `🏆 [UĞURLU] Robot hədəfə çatdı! (+${gameData.points} Xal)` }]);
+        setTerminalLogs(prev => [...prev, { type: 'success', text: `🏆 [UĞURLU] Missiya tamamlandı! (+${gameData.points} Xal)` }]);
 
-        // 1. Konfeti effekti
-        confetti({
-          particleCount: 150,
-          spread: 70,
-          origin: { y: 0.6 }
-        });
+        confetti({ particleCount: 160, spread: 80, origin: { y: 0.6 } });
 
-        // 2. Məlumatları save etmək və keçid etmək üçün API çağırışı
         await fetch(`/api/games/complete`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: userData?._id, gameId: gameData._id, points: gameData.points })
         });
 
-        // 3. Popup-ı aktivləşdirəcək state (aşağıda izah edirəm)
         setShowSuccessModal(true);
       } else {
-        setTerminalLogs(prev => [...prev, { type: 'error', text: '🏁 Əmrlər bitdi, lakin robot finiş nöqtəsinə çata bilmədi.' }]);
+        setTerminalLogs(prev => [...prev, { type: 'error', text: '🏁 Əmrlər icra olundu, lakin robot finiş xanasına çata bilmədi.' }]);
       }
     }
     setActiveStepIndex(null);
@@ -304,7 +296,7 @@ export default function RealCompilerArena({ params }: { params: Promise<{ id: st
 
     if (code === lastCompiledCodeRef.current && executionStackRef.current.length > 0) {
       robotRef.current.reset(gameData || undefined);
-      setTerminalLogs([{ type: 'system', text: '🔄 Kod eynidir. Yenidən başladılır...' }]);
+      setTerminalLogs([{ type: 'system', text: '🔄 Eyni kod yenidən simulyasiya edilir...' }]);
       startRobotMovement(executionStackRef.current);
       return;
     }
@@ -323,23 +315,23 @@ export default function RealCompilerArena({ params }: { params: Promise<{ id: st
       }
       let stdout = result.program_output ? result.program_output.trim() : "";
       if (stdout === "") {
-        setTerminalLogs([{ type: 'error', text: '⚠ Ekrana (cout) heç bir əmr çıxmadı.' }]);
+        setTerminalLogs([{ type: 'error', text: '⚠ Ekrana (cout) heç bir komanda çıxmadı.' }]);
         setIsRunning(false); return;
       }
       const rawSteps = stdout.split("\n").map(s => s.trim());
       const parsedSteps: ExecutionStep[] = [];
       rawSteps.forEach(stepText => {
         let cmdType: 'move' | 'left' | 'right' | null = null;
-        if (stepText.includes("duz get")) cmdType = "move";
+        if (stepText.includes("ireli")) cmdType = "move";
         else if (stepText.includes("sola don")) cmdType = "left";
         else if (stepText.includes("saga don")) cmdType = "right";
         if (cmdType) parsedSteps.push({ cmd: cmdType, raw: stepText });
       });
       executionStackRef.current = parsedSteps; lastCompiledCodeRef.current = code;
-      setTerminalLogs([{ type: 'success', text: '🚀 Kompilyasiya uğurludur! Robot hərəkət edir...' }]);
+      setTerminalLogs([{ type: 'success', text: '🚀 Kod uğurlu işlədi! Robot hərəkətə başlayır...' }]);
       startRobotMovement(parsedSteps);
     } catch (error) {
-      setTerminalLogs([{ type: 'error', text: '🌐 Server xətası baş verdi.' }]); setIsRunning(false);
+      setTerminalLogs([{ type: 'error', text: '🌐 Server əlaqə xətası.' }]); setIsRunning(false);
     }
   };
 
@@ -356,27 +348,26 @@ export default function RealCompilerArena({ params }: { params: Promise<{ id: st
     executionStackRef.current = [];
     setSuccessSteps([]);
     setIsTerminalExpanded(false);
-    setTerminalLogs([{ type: 'system', text: '// Arena sıfırlandı. Yeni kod yaza bilərsiniz.' }]);
+    setTerminalLogs([{ type: 'system', text: '// Xəritə sıfırlandı. Yeni kod yaza bilərsiniz.' }]);
   };
 
-  // Yüklənmə və Xəta ekranları
   if (loading) {
     return (
-      <div className="h-screen w-screen bg-[#f1f5f9] flex flex-col items-center justify-center font-sans">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mb-3"></div>
-        <p className="text-slate-600 font-bold text-sm">Arena yüklənir, zəhmət olmasa gözləyin...</p>
+      <div className="h-screen w-screen bg-gradient-to-b from-sky-200 to-green-100 flex flex-col items-center justify-center font-sans">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-emerald-600 mb-4"></div>
+        <p className="text-emerald-900 font-black text-base">Arena hazırlanır, meşəyə daxil olursunuz... 🌲</p>
       </div>
     );
   }
 
   if (apiError || !gameData) {
     return (
-      <div className="h-screen w-screen bg-[#f1f5f9] flex flex-col items-center justify-center font-sans p-6">
-        <div className="bg-white p-6 rounded-2xl shadow-md text-center max-w-md border border-slate-200">
-          <span className="text-4xl mb-2 block">⚠️</span>
-          <h3 className="text-slate-800 font-extrabold text-lg mb-2">Xəta Baş Verdi</h3>
-          <p className="text-slate-500 text-sm mb-4">{apiError || "Məlumat tapılmadı."}</p>
-          <button onClick={() => window.location.reload()} className="bg-indigo-600 text-white font-bold text-xs px-4 py-2 rounded-xl">Yenidən Cəhd Et</button>
+      <div className="h-screen w-screen bg-[#f1f5f9] flex flex-col items-center justify-center p-6">
+        <div className="bg-white p-8 rounded-[32px] border-4 border-amber-400 shadow-xl text-center max-w-md">
+          <span className="text-5xl mb-3 block">⚠️</span>
+          <h3 className="text-slate-900 font-black text-xl mb-2">Xəta Baş Verdi</h3>
+          <p className="text-slate-600 text-sm mb-5 font-semibold">{apiError || "Məlumat tapılmadı."}</p>
+          <button onClick={() => window.location.reload()} className="bg-amber-500 text-white font-black px-6 py-2.5 rounded-xl shadow-[0_4px_0_#b45309]">Yenidən Cəhd Et</button>
         </div>
       </div>
     );
@@ -385,97 +376,136 @@ export default function RealCompilerArena({ params }: { params: Promise<{ id: st
   const lineCount = code.split('\n').length;
 
   return (
-    <div className="h-screen w-screen bg-[#f1f5f9] flex flex-col p-4 antialiased font-sans select-none overflow-hidden">
+    <div className="h-screen w-screen bg-gradient-to-b from-sky-100 via-emerald-50 to-green-50 flex flex-col p-4 md:p-6 antialiased font-sans select-none overflow-hidden">
 
-      {/* Üst Başlıq (Dinamik data ilə) */}
-      <div className="flex justify-between items-center bg-white px-5 py-2.5 rounded-2xl shadow-sm border border-slate-200/60 mb-4 shrink-0">
-        <div className="flex items-center gap-3">
-          <span className="text-xl">🌲</span>
+
+      {/* ÜST DİNAMİK BAŞLIQ QATI (TAM YENİLƏNMİŞ OYUN KONSEPTLİ GERİ DÜYMƏSİ) */}
+      <div className="flex justify-between items-center bg-white p-4 rounded-[28px] border-4 border-white shadow-[0_6px_0_#e2e8f0] mb-5 shrink-0">
+        <div className="flex items-center gap-4">
+
+          {/* BÖYÜK, ŞİRİN VƏ QALIN GERİ QAYIT DÜYMƏSİ */}
+          <button
+            onClick={() => navigateTo('/student/gamearena')}
+            className="p-3 bg-rose-100 hover:bg-rose-200 text-rose-600 rounded-2xl border-b-[4px] border-rose-300 active:border-b-0 active:translate-y-[4px] transition-all flex items-center justify-center shrink-0 shadow-sm group"
+            title="Arenadan Çıx"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="transform group-hover:-translate-x-1 transition-transform"
+            >
+              <path d="m15 18-6-6 6-6" />
+            </svg>
+          </button>
+
+          {/* Dairəvi Çərçivədə Dinamik Heyvan Şəkli */}
+          <div className="relative w-16 h-16 rounded-full border-4 border-emerald-400 overflow-hidden shadow-md bg-emerald-50 shrink-0">
+            <Image
+              src={`/animals/${currentAnimal.image}`}
+              alt={currentAnimal.nameAz}
+              fill
+              className="object-cover"
+            />
+          </div>
+
           <div>
-            <h1 className="font-extrabold text-slate-800 tracking-tight text-sm md:text-base leading-tight">{gameData.title}</h1>
-            <p className="text-[11px] text-slate-400 font-medium mt-0.5">{gameData.instructionText}</p>
+
+            <h1 className="font-black text-emerald-950 tracking-tight text-base md:text-xl leading-tight mt-0.5 md:mt-1">
+              {gameData.title}
+            </h1>
+
+            {/* HTML Formatında Təlimat Mətni */}
+            <div
+              className="mt-2 p-4 bg-gradient-to-r from-emerald-50 to-emerald-100/50 rounded-2xl border-2 border-emerald-200 shadow-inner"
+            >
+
+              <div
+                className="text-xs md:text-sm text-emerald-800 font-medium leading-relaxed [&_strong]:bg-emerald-200 [&_strong]:px-1.5 [&_strong]:rounded-md [&_strong]:text-emerald-950 [&_code]:bg-emerald-900 [&_code]:text-emerald-100 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded font-mono"
+                dangerouslySetInnerHTML={{ __html: gameData.instructionText }}
+              />
+            </div>
           </div>
         </div>
-        <div className="text-right">
-          <p className="text-xs text-slate-500 font-mono">stdin = {ROBOT_INPUT_NUMBER}</p>
-          <p className="text-[11px] text-indigo-600 font-bold mt-0.5">Xal: {gameData.points}</p>
-        </div>
+
+        {/* Xal və Göstəricilər */}
+
       </div>
+      {/* İŞ SAHƏSİ */}
+      <div className="flex-1 flex flex-col lg:flex-row gap-6 items-stretch overflow-hidden pb-2">
 
-      {/* ƏSAS İŞ SAHƏSİ */}
-      <div className="flex-1 flex flex-col lg:flex-row gap-5 items-stretch overflow-hidden pb-2">
-
-        {/* SOL TƏRƏF: Robot Arenası */}
-        <div className="flex-[1.4] bg-white p-4 rounded-2xl shadow-sm border border-slate-200/60 flex items-center justify-center min-h-[300px]">
+        {/* SOL TƏRƏF: Robot Arenası (Uşaq Stili Böyük Çərçivə) */}
+        <div className="flex-[1.3] bg-white p-5 rounded-[36px] border-4 border-white shadow-[0_8px_0_#e2e8f0] flex items-center justify-center min-h-[320px]">
           <div className="relative aspect-square max-h-full max-w-full">
             <canvas
               ref={canvasRef}
               width={400}
               height={400}
-              className="bg-[#fafafa] rounded-xl block max-w-full max-h-full object-contain border border-slate-100"
+              className="bg-emerald-50/40 rounded-2xl block max-w-full max-h-full object-contain border-2 border-dashed border-emerald-200"
             />
           </div>
         </div>
 
-        {/* SAĞ TƏRƏF */}
-        <div className="flex-1 flex flex-col gap-4 overflow-hidden relative">
+        {/* SAĞ TƏRƏF: Redaktor və Kod Sahəsi */}
+        <div className="flex-1 flex flex-col gap-5 overflow-hidden relative">
 
-          {/* Editör ve Terminal Alanı */}
-          <div className="flex-1 relative bg-transparent rounded-2xl overflow-hidden min-h-[200px]">
-
-            {/* NORMAL AÇIQ EDİTÖR */}
-            <div className="absolute inset-0 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
-              <div className="bg-[#f3f4f6] px-4 py-2 border-b border-slate-200 flex justify-between items-center shrink-0">
-                <span className="text-xs font-mono font-bold text-slate-600">main.cpp</span>
-                <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-mono font-bold">Native Editor</span>
+          <div className="flex-1 relative bg-transparent rounded-3xl overflow-hidden min-h-[220px]">
+            {/* C++ EDİTÖR */}
+            <div className="absolute inset-0 bg-white rounded-[32px] border-4 border-white shadow-[0_8px_0_#e2e8f0] flex flex-col overflow-hidden">
+              <div className="bg-[#f8fafc] px-5 py-3 border-b-2 border-slate-100 flex justify-between items-center shrink-0">
+                <span className="text-xs font-mono font-black text-slate-500">solution.cpp</span>
+                <span className="text-[10px] bg-amber-100 text-amber-800 font-black px-3 py-1 rounded-full uppercase tracking-wider">
+                  C++ Kompilyator
+                </span>
               </div>
 
-              <div className="flex-1 flex font-mono text-[14px] p-3 overflow-hidden bg-white">
-                {/* Satır Numaraları */}
-                <div className="text-slate-400 text-right pr-3 select-none border-r border-slate-200 flex flex-col w-8 shrink-0">
-                  {Array.from({ length: lineCount }).map((_, i) => (
-                    <div key={i} className="text-[13px] h-[21px] leading-[21px]">{i + 1}</div>
-                  ))}
-                </div>
-
-                <textarea
+              <div className="rounded-2xl overflow-hidden border-3 border-slate-200 shadow-sm bg-white task-editor min-h-[340px]">
+                {/* Sətir Nömrələri */}
+              
+                <ReactCodeMirror
                   value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  disabled={isRunning || isTerminalExpanded}
-                  className="flex-1 bg-transparent text-[#24292e] border-none resize-none outline-none pl-3 w-full h-full font-mono caret-slate-800 overflow-y-auto"
-                  placeholder="// C++ kodunuzu buraya yazın..."
-                  spellCheck={false}
-                  style={{ lineHeight: '21px' }}
-                />
+                  height="100%"
+                  minHeight="340px"
+                  theme="light"
+                  extensions={[cpp()]}
+                  onChange={(value) => setCode(value)}
+                  editable={!isRunning && !isTerminalExpanded}
+                />                
               </div>
             </div>
 
-            {/* SÜRÜŞƏN TERMİNAL */}
-            <div className={`absolute left-0 right-0 bottom-0 bg-[#0f172a] rounded-2xl border border-slate-800 flex flex-col transition-all duration-500 shadow-2xl ${isTerminalExpanded
-              ? 'top-0 h-full z-10 border-t-4 border-t-amber-500'
-              : 'h-[120px] lg:h-[135px] z-10'
+            {/* SÜRÜŞƏN MEŞƏ TERMİNALI */}
+            <div className={`absolute left-0 right-0 bottom-0 bg-[#1e293b] rounded-[28px] border-4 border-[#334155] flex flex-col transition-all duration-500 shadow-2xl ${isTerminalExpanded
+              ? 'top-0 h-full z-10 border-t-4 border-t-amber-400'
+              : 'h-[130px] lg:h-[145px] z-10'
               }`}
               style={{ transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)' }}
             >
-              {/* Terminal Header */}
-              <div className="flex justify-between items-center px-4 py-2 bg-[#020617] rounded-t-2xl border-b border-slate-800/80 shrink-0">
-                <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono uppercase tracking-wider">
-                  <span className={`w-2 h-2 rounded-full ${isRunning ? 'bg-rose-500 animate-ping' : 'bg-emerald-400'}`}></span>
-                  Konsol Çıxışı
+              {/* Terminal Başlığı */}
+              <div className="flex justify-between items-center px-5 py-2.5 bg-[#0f172a] rounded-t-[20px] border-b border-slate-700 shrink-0">
+                <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono font-black uppercase tracking-wider">
+                  <span className={`w-2.5 h-2.5 rounded-full ${isRunning ? 'bg-rose-500 animate-pulse' : 'bg-emerald-400'}`}></span>
+                  Konsol Ekranı
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div>
                   {isTerminalExpanded ? (
                     <button
                       onClick={() => setIsTerminalExpanded(false)}
-                      className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs px-4 py-1.5 rounded-xl border-b-[3px] border-amber-800 active:border-b-0 active:translate-y-[3px] transition-all flex items-center gap-2 shadow-lg shadow-amber-500/20"
+                      className="bg-gradient-to-b from-amber-400 to-amber-500 text-slate-950 font-black text-xs px-4 py-1.5 rounded-xl shadow-[0_3px_0_#b45309] active:translate-y-[3px] active:shadow-none transition-all flex items-center gap-1.5"
                     >
                       ↩ KODA QAYIT
                     </button>
                   ) : (
                     <button
                       onClick={() => setIsTerminalExpanded(true)}
-                      className="text-slate-400 hover:text-white text-xs bg-slate-800/60 px-2.5 py-1 rounded-md border border-slate-700 transition-colors"
+                      className="text-slate-400 hover:text-white text-xs bg-slate-800 px-3 py-1 rounded-lg border border-slate-700 font-bold transition-colors"
                     >
                       Genişlət ⛶
                     </button>
@@ -484,70 +514,77 @@ export default function RealCompilerArena({ params }: { params: Promise<{ id: st
               </div>
 
               {/* Terminal Logları */}
-              <div ref={terminalRef} className="flex-1 font-mono text-[13px] text-slate-300 overflow-y-auto p-4 flex flex-col gap-1.5">
+              <div ref={terminalRef} className="flex-1 font-mono text-[13px] text-slate-200 overflow-y-auto p-4 flex flex-col gap-2">
                 {terminalLogs.map((log, idx) => {
-                  if (log.type === 'system') return <div key={idx} className="text-amber-400 font-semibold">{log.text}</div>;
-                  if (log.type === 'error') return <div key={idx} className="text-rose-400 bg-rose-950/20 border border-rose-900/30 p-2 rounded-md font-sans text-xs">{log.text}</div>;
-                  if (log.type === 'success') return <div key={idx} className="text-emerald-400 font-bold">{log.text}</div>;
+                  if (log.type === 'system') return <div key={idx} className="text-amber-400 font-bold">{log.text}</div>;
+                  if (log.type === 'error') return <div key={idx} className="text-rose-400 bg-rose-950/40 border border-rose-900/40 p-3 rounded-xl font-sans text-xs font-semibold">{log.text}</div>;
+                  if (log.type === 'success') return <div key={idx} className="text-emerald-400 font-black">{log.text}</div>;
                   return null;
                 })}
                 {executionStackRef.current.map((item, index) => {
                   const isActive = activeStepIndex === index;
                   const isSuccess = successSteps.includes(index);
-                  let lineStyle = "px-2 py-1.5 rounded-md transition-all text-slate-500 flex items-center gap-2 ";
-                  if (isActive) lineStyle += "bg-amber-400 text-slate-950 font-black pl-3 translate-x-1 shadow-md";
-                  else if (isSuccess) lineStyle += "text-emerald-400 bg-emerald-500/5";
-                  return <div key={index} className={lineStyle}><span className="text-[9px] opacity-40">#{index + 1}</span>{isActive ? '👉 ' : ''}{item.raw}</div>;
+                  let lineStyle = "px-3 py-2 rounded-xl transition-all font-bold text-slate-400 flex items-center gap-2 ";
+                  if (isActive) lineStyle += "bg-amber-400 text-slate-950 font-black translate-x-1 shadow-md";
+                  else if (isSuccess) lineStyle += "text-emerald-400 bg-emerald-500/10";
+                  return <div key={index} className={lineStyle}><span className="text-[10px] opacity-30">#{index + 1}</span>{isActive ? '👉 ' : ''}{item.raw}</div>;
                 })}
               </div>
             </div>
 
           </div>
 
-          {/* ACTIONS */}
-          <div className="p-4 bg-white rounded-2xl border border-slate-200/60 shadow-sm flex gap-3 shrink-0 z-20">
+          {/* FƏALİYYƏT DÜYMƏLƏRİ (OYUN PANELİ SÜLEYMAN TƏRZİ) */}
+          <div className="p-4 bg-white rounded-[24px] border-4 border-white shadow-[0_6px_0_#e2e8f0] flex gap-3 shrink-0 z-20">
             {isRunning ? (
               <button
                 onClick={handleStopExecution}
-                className="flex-[2.5] bg-rose-500 hover:bg-rose-400 text-white font-extrabold text-sm py-3 px-6 rounded-xl border-b-[4px] border-rose-700 active:border-b-0 active:translate-y-[4px] shadow-md uppercase tracking-wider transition-all duration-75"
+                className="flex-[2.5] bg-rose-500 hover:bg-rose-400 text-white font-black text-sm py-4 px-6 rounded-2xl shadow-[0_5px_0_#9f1239] active:translate-y-[5px] active:shadow-none uppercase tracking-wider transition-all"
               >
-                Simulyasiyanı Dayandır 🛑
+                Dayandır <Square size={16} className="inline ml-1" fill="currentColor" />
               </button>
             ) : (
               <button
                 onClick={handleCompileAndRun}
-                className="flex-[2.5] bg-emerald-500 hover:bg-emerald-400 text-white font-extrabold text-sm py-3 px-6 rounded-xl border-b-[4px] border-emerald-700 active:border-b-0 active:translate-y-[4px] shadow-md uppercase tracking-wider transition-all duration-75"
+                className="flex-[2.5] bg-emerald-500 hover:bg-emerald-400 text-white font-black text-sm py-4 px-6 rounded-2xl shadow-[0_5px_0_#065f46] active:translate-y-[5px] active:shadow-none uppercase tracking-wider transition-all"
               >
-                Kodu Çalışdır ▶
+                Kodu Çalışdır <Play size={16} className="inline ml-1" fill="currentColor" />
               </button>
             )}
 
             <button
               onClick={handleReset}
-              className="flex-[1] bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-sm py-3 px-4 rounded-xl border-b-[4px] border-slate-300 active:border-b-0 active:translate-y-[4px] shadow-sm uppercase tracking-wider transition-all duration-75"
+              className="flex-[1] bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-sm py-4 px-4 rounded-2xl shadow-[0_5px_0_#cbd5e1] active:translate-y-[5px] active:shadow-none uppercase tracking-wider transition-all"
             >
-              Sıfırla
+              Sıfırla <RotateCcw size={16} className="inline ml-1" />
             </button>
           </div>
 
         </div>
       </div>
 
+      {/* SƏHİFƏLƏRARASI KEÇİD POPUP-I */}
       {showSuccessModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white p-8 rounded-3xl shadow-2xl text-center animate-in zoom-in duration-300">
-            <div className="text-6xl mb-4">🎉</div>
-            <h2 className="text-2xl font-black text-slate-800 mb-2">Təbriklər!</h2>
-            <p className="text-slate-500 mb-6">Siz bu arenanı uğurla keçdiniz!</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
+          <div className="bg-white p-8 rounded-[40px] border-8 border-emerald-400 shadow-2xl text-center max-w-sm w-full animate-in zoom-in duration-300">
+            <div className="text-7xl mb-4 animate-bounce">🎉</div>
+            <h2 className="text-3xl font-black text-emerald-950 mb-2">Əla İş!</h2>
+            <p className="text-slate-600 font-bold mb-6">Robot hədəfə çatdı və {currentAnimal.nameAz} sənə xalları təqdim etdi!</p>
             <button
-              onClick={() => navigateTo('/student/gamearena')} // Arena siyahısına qayıtmaq üçün
-              className="bg-indigo-600 text-white font-bold px-8 py-3 rounded-xl hover:bg-indigo-700 transition-all"
+              onClick={() => navigateTo('/student/gamearena')}
+              className="w-full bg-emerald-500 hover:bg-emerald-400 text-white font-black py-4 rounded-2xl shadow-[0_5px_0_#065f46] active:translate-y-[5px] active:shadow-none transition-all uppercase text-sm tracking-wider"
             >
-              Növbəti Arenaya Keç
+              Arenaya Dön 🐾
             </button>
           </div>
         </div>
       )}
+
+
+       <style jsx global>{`     
+        
+        .task-editor .cm-editor { font-family: 'Consolas', monospace !important; font-size: 14px !important; font-weight: 700 !important; }
+      `}</style>
     </div>
   );
 }

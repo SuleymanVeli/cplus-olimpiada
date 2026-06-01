@@ -3,10 +3,10 @@ import  dbConnect  from '@/lib/dbConnect';
 import Game  from '@/models/Game';
 
 // 1. PUT: Mövcud Oyun Arenasını redaktə edir
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     await dbConnect();
-    const gameId = params.id;
+    const gameId = (await params).id;
     const body = await request.json();
 
     const { 
@@ -57,10 +57,10 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 }
 
 // 2. DELETE: Oyun Arenasını silir (Ehtiyac olarsa admin paneldən çağırmaq üçün)
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     await dbConnect();
-    const gameId = params.id;
+    const gameId = (await params).id;
 
     const deletedGame = await Game.findByIdAndDelete(gameId);
     if (!deletedGame) {
