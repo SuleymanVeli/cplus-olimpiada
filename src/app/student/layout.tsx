@@ -9,6 +9,7 @@ import {
   Loader2, Award, Sparkles, Map as MapIcon, ChevronLeft, Menu
 } from 'lucide-react';
 import ContestStickyCard from '@/src/components/ContestStickyCard';
+import GameFloatingButton from '@/src/components/GameFloatingButton';
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   const { userData, setUserData, logout } = useUser();
@@ -187,6 +188,8 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
       <main className="flex-1 min-h-screen relative z-10">
         <div className="animate-in fade-in duration-500 ease-out fill-mode-both">{children}</div>
       </main>
+
+     { showInfoCard && <GameFloatingButton />}
 
       {/* PROFIL MODAL */}
       {isEditOpen && (

@@ -6,6 +6,7 @@ export interface IModule extends Document {
   content: string;      // Dərsin geniş mətn izahı (Markdown və ya HTML formatda)
   order: number;        // Xəritədə neçənci sırada duracağı (1, 2, 3...)
   tasks: mongoose.Types.ObjectId[]; // Bu ulduza aid olan testlərin (nömrələrin) siyahısı
+  games: mongoose.Types.ObjectId[];
 }
 
 const ModuleSchema: Schema = new Schema({
@@ -13,7 +14,8 @@ const ModuleSchema: Schema = new Schema({
   videoUrl: { type: String, required: true },
   content: { type: String, required: true },
   order: { type: Number, required: true, unique: true },
-  tasks: [{ type: Schema.Types.ObjectId, ref: 'Task' }]
+  tasks: [{ type: Schema.Types.ObjectId, ref: 'Task' }],
+  games: [{ type: Schema.Types.ObjectId, ref: 'Game' }]
 }, { timestamps: true });
 
 export default mongoose.models.Module || mongoose.model<IModule>('Module', ModuleSchema);

@@ -11,7 +11,8 @@ import {
   ChevronRight,
   ShieldCheck,
   Menu,
-  X
+  X,
+  Gamepad2
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -25,6 +26,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { href: "/admin/students", icon: Users, label: "Şagirdlər" },
     { href: "/admin/tasks", icon: FilePlus, label: "Tapşırıqlar" },
+    { href: "/admin/games", icon: Gamepad2, label: "Oyun Arenaları" },
     { href: "/admin/modules", icon: LayoutDashboard, label: "Modullar" },
     { href: "/admin/settings", icon: Settings, label: "Ayarlar" },
   ];
