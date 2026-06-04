@@ -165,7 +165,7 @@ export default function DynamicArenaPage() {
     navigateTo('/student/learning');
   };
 
-  const validateCode = async () => {
+const validateCode = async () => {
     if (!task || !task.testCases || task.testCases.length === 0) return;
     setAllPassed(false);
     setCompilerError(null);
@@ -182,14 +182,13 @@ export default function DynamicArenaPage() {
       const currentCase = task.testCases[i];
 
       try {
-        const response = await fetch("https://wandbox.org/api/compile.json", {
+        // Birbaşa öz yaratdığımız Next.js API-nə sorğu atırıq
+        const response = await fetch("/api/compiler", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             code: editorValue,
-            stdin: currentCase.input,
-            compiler: "gcc-head",
-            save: false
+            stdin: currentCase.input || ""
           })
         });
 
@@ -217,6 +216,7 @@ export default function DynamicArenaPage() {
       } catch (error) {
         currentStatuses[i] = 'failed';
         isEverythingCorrect = false;
+        setValidationMessage(`Sistemdə müvəqqəti nasazlıq oldu. 🦊 Bir neçə saniyə sonra yenidən yoxla!`);
         break;
       }
       setTestStatuses([...currentStatuses]);
@@ -242,11 +242,10 @@ export default function DynamicArenaPage() {
           })
         });
       } catch (err) {
-        console.error("Progress save error:", err);
+        console.error("Tərəqqi yadda saxlanılarkən xəta yarandı:", err);
       }
     }
   };
-
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center flex-col gap-4 bg-[#eef9f1]">
