@@ -56,7 +56,7 @@ export default function GamesGrid() {
         
         {/* Qayıt düyməsi */}
         <button 
-          onClick={() => navigateTo('/student/learning')}
+          onClick={() => navigateTo('/student/dashboard')}
           className="absolute top-8 left-8 z-30 flex items-center gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white font-bold px-6 py-3 rounded-2xl transition-all"
         >
           <ArrowLeft size={20} /> Tədrisə Qayıt

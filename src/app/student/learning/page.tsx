@@ -553,6 +553,14 @@ export default function GamingPath() {
     <div className="flex justify-center bg-[#bfe3f0] min-h-screen overflow-hidden font-sans select-none">
       <div className="relative shadow-[0_0_80px_rgba(0,0,0,0.2)] bg-[#58cc02]">
 
+         {/* Dashboarda geri donme, shadow olsun */}
+        <button
+          onClick={() => navigateTo('/student/dashboard')}
+          className="absolute top-5 left-5 bg-white px-8 py-3.5 hover:translate-y-[-2px] cursor-pointer rounded-full border-b-[5px] border-slate-200 z-10 whitespace-nowrap text-slate-700 font-black text-sm md:text-base shadow-lg tracking-wide"
+        >
+          🏠 Dashboard
+        </button>
+
         {/* Dinamik Üst UI Panel */}
         <div className="absolute top-5 left-1/2 -translate-x-1/2 bg-white px-8 py-3.5 rounded-full border-b-[5px] border-slate-200 z-10 whitespace-nowrap text-slate-700 font-black text-sm md:text-base pointer-events-none shadow-lg tracking-wide uppercase">
           🌳 C++ Macərası <span className="text-[#1cb0f6] mx-2">•</span> Tapşırıq Xəritəsi

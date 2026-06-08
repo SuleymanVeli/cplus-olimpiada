@@ -47,7 +47,7 @@ useEffect(() => {
       setRegStep(2);
     } else {
       setIsLoginOpen(false);
-      navigateTo('/student/learning');
+      navigateTo('/student/dashboard');
     }
   }
 

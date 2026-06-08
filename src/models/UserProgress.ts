@@ -50,6 +50,7 @@ const UserProgressSchema: Schema = new Schema({
   completedTasks: [{ type: Schema.Types.ObjectId, ref: 'Task' }],
   completedModules: [{ type: Schema.Types.ObjectId, ref: 'Module' }],
   completedGames: [{ type: Schema.Types.ObjectId, ref: 'Game' }],
+  level: { type: Number, default: 1 },
   solvedTasks: [SolvedTaskSchema],
   playedGames: [PlayedGameSchema]
 }, { timestamps: true });

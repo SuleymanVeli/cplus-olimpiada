@@ -117,7 +117,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-gradient-to-b from-[#eef9f1] to-transparent pointer-events-none z-0" />
 
       {/* SOL PROFIL HUD */}
-      {showInfoCard && userData && (
+      {false && userData && (
         <div className="fixed top-6 left-6 z-50 pointer-events-auto animate-in fade-in slide-in-from-left duration-500">
           {isCardMinimized ? (
             <button onClick={() => setIsCardMinimized(false)} className="bg-white/95 border-2 border-emerald-300/50 text-emerald-600 p-4 rounded-2xl shadow-lg font-black text-xs uppercase tracking-wider backdrop-blur-xl border-b-4">
@@ -189,7 +189,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
         <div className="animate-in fade-in duration-500 ease-out fill-mode-both">{children}</div>
       </main>
 
-     { showInfoCard && <GameFloatingButton />}
+     { false && <GameFloatingButton />}
 
       {/* PROFIL MODAL */}
       {isEditOpen && (
