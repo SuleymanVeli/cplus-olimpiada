@@ -20,4 +20,6 @@ const ModuleSchema: Schema = new Schema({
   games: [{ type: Schema.Types.ObjectId, ref: 'Game' }]
 }, { timestamps: true });
 
+ModuleSchema.index({ order: 1, level: 1 });
+
 export default mongoose.models.Module || mongoose.model<IModule>('Module', ModuleSchema);

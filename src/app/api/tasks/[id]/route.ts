@@ -25,8 +25,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       );
     }
 
+    const associatedModule = task.moduleId as any;
+
     // 2. Şagirdin tərəqqisini yoxlayırıq ki, bu tapşırığa giriş icazəsi var ya yox
-    const progress = await UserProgress.findOne({ userId: mockUserId });
+    const progress = await UserProgress.findOne({ userId: mockUserId, level: associatedModule.level }).lean();
 
     if (!progress) {
       return NextResponse.json(
@@ -34,8 +36,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         { status: 404 }
       );
     }
-
-    const associatedModule = task.moduleId as any;
+    
 
     // 3. Təhlükəsizlik Yoxlanışı (Security Check): 
     // Şagird hələ bu modulun kilidini açmayıbsa və ya modul aktivdirsə amma bu taskın sırası gəlməyibsə, datanı vermirik.
@@ -70,7 +71,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           points: task.points,
           order: task.order,
           testCases: task.testCases, // Test case-ləri də göndəririk ki, şagird özündə yoxlaya bilsin
-          status: progress.completedTasks.includes(task._id.toString()) ? 'completed' : 'active'
+          status: progress.completedTasks.includes(task._id.toString()) ? 'completed' : 'active',
+          level: associatedModule.level
         },
         module: {
           _id: associatedModule._id,

@@ -50,6 +50,7 @@ interface TaskData {
   order: number;
   status: 'completed' | 'active';
   testCases: TestCase[];
+  level?: number;
 }
 
 // Təkrarlanma və yanıb-sönmə problemi həll edilmiş ardıcıl yazı makinası hook-u
@@ -238,7 +239,8 @@ const validateCode = async () => {
             type: 'task',
             userId: userData?._id || '',
             id: task._id,
-            code: editorValue
+            code: editorValue,
+            level: task.level || 1
           })
         });
       } catch (err) {

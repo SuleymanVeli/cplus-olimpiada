@@ -9,13 +9,13 @@ export async function POST(request: Request) {
   await dbConnect();
 
   try {
-    const { userId, type, id, code } = await request.json(); // type: 'lesson' veya 'task'
+    const { userId, type, id, code, level } = await request.json(); // type: 'lesson' veya 'task'
 
-    console.log("Gelen veri:", { userId, type, id, code });
+    console.log("Gelen veri:", { userId, type, id, code, level });
 
     const userObjectId = new mongoose.Types.ObjectId(userId);
 
-    let progress = await UserProgress.findOne({ userId :userObjectId });
+    let progress = await UserProgress.findOne({ userId :userObjectId, level: level }); 
     if (!progress) {     
       return NextResponse.json({ success: false, message: "İstifadəçi irəliləyişi tapılmadı." }, { status: 404 });
     }

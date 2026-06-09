@@ -10,7 +10,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const { id } = await params;
 
     // Əgər order dəyişibsə, başqa modulun bu sıranı tutub-tutmadığını yoxlayaq
-    const duplicateOrder = await Module.findOne({ order: body.order, _id: { $ne: id } });
+    const duplicateOrder = await Module.findOne({ order: body.order, level: body.level, _id: { $ne: id } });
     if (duplicateOrder) {
       return NextResponse.json({ 
         success: false, 
