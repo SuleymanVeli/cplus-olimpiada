@@ -7,13 +7,15 @@ export interface IModule extends Document {
   order: number;        // Xəritədə neçənci sırada duracağı (1, 2, 3...)
   tasks: mongoose.Types.ObjectId[]; // Bu ulduza aid olan testlərin (nömrələrin) siyahısı
   games: mongoose.Types.ObjectId[];
+  level: number;       // Hər bölmənin səviyyəsi (XP-yə görə)
 }
 
 const ModuleSchema: Schema = new Schema({
+  level: { type: Number, default: 1 }, // Hər bölmənin səviyyəsi (XP-yə görə)
   title: { type: String, required: true },
   videoUrl: { type: String, required: true },
   content: { type: String, required: true },
-  order: { type: Number, required: true, unique: true },
+  order: { type: Number, required: true },
   tasks: [{ type: Schema.Types.ObjectId, ref: 'Task' }],
   games: [{ type: Schema.Types.ObjectId, ref: 'Game' }]
 }, { timestamps: true });

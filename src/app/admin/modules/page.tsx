@@ -8,39 +8,40 @@ interface ModuleForm {
   videoUrl: string;
   content: string;
   order: number;
+  level: number; // Yeni sahə
 }
 
 export default function AdminModulesPage() {
   const [modules, setModules] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // Pop-up və Form State-ləri
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
-  
+
+  const [currentLevel, setCurrentLevel] = useState(1); // Aktiv səviyyə
   const [form, setForm] = useState<ModuleForm>({
     title: '',
     videoUrl: '',
     content: '',
-    order: 1
+    order: 1,
+    level: 1 // Yeni sahə
   });
 
   useEffect(() => {
     fetchModules();
-  }, []);
+  }, [currentLevel]);
 
   const fetchModules = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/admin/modules');
+      const res = await fetch(`/api/admin/modules?level=${currentLevel}`);
       const result = await res.json();
-      if (result.success) {
-        setModules(result.data);
-      }
+      if (result.success) setModules(result.data);
     } catch (err) {
-      console.error("Data çəkilərkən xəta:", err);
+      console.error(err);
     } finally {
       setIsLoading(false);
     }
@@ -53,7 +54,8 @@ export default function AdminModulesPage() {
       title: '',
       videoUrl: '',
       content: '',
-      order: modules.length + 1
+      order: modules.length + 1,
+      level: currentLevel // Yeni modullar cari səviyyədə yaradılır
     });
     setIsModalOpen(true);
   };
@@ -65,7 +67,8 @@ export default function AdminModulesPage() {
       title: mod.title,
       videoUrl: mod.videoUrl,
       content: mod.content,
-      order: mod.order
+      order: mod.order,
+      level: mod.level
     });
     setIsModalOpen(true);
   };
@@ -83,6 +86,7 @@ export default function AdminModulesPage() {
     if (!form.title.trim()) return setValidationError("Modulun başlığı mütləq daxil edilməlidir!");
     if (!form.videoUrl.startsWith("http")) return setValidationError("Düzgün bir video URL-i daxil edin (http/https)!");
     if (!form.content.trim()) return setValidationError("Dərs izahı mətni boş qala bilməz!");
+    form.level = currentLevel; // Formun səviyyəsini cari səviyyəyə uyğunlaşdırırıq
 
     setIsSubmitting(true);
     const url = editingId ? `/api/admin/modules/${editingId}` : '/api/admin/modules';
@@ -112,12 +116,27 @@ export default function AdminModulesPage() {
   return (
     <div className="min-h-screen bg-slate-50 p-8 text-slate-800 font-sans">
       <div className="max-w-6xl mx-auto space-y-6">
-        
+
         {/* SƏHİFƏ BAŞLIĞI VƏ YARATMA DÜYMƏSİ */}
         <div className="flex justify-between items-center bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
           <div>
             <h1 className="text-xl font-black text-slate-900 tracking-tight">📦 MODUL İDARƏETMƏSİ</h1>
             <p className="text-xs font-semibold text-slate-400 m-0 mt-0.5">Xəritədəki əsas ulduz mövzuların siyahısı və məzmunu</p>
+          </div>
+
+          <div className="flex gap-2 mb-6">
+            {[1, 2, 3].map((lvl) => (
+              <button
+                key={lvl}
+                onClick={() => setCurrentLevel(lvl)}
+                className={`px-4 py-2 text-xs font-black rounded-lg transition-all ${currentLevel === lvl
+                  ? "bg-slate-900 text-white"
+                  : "bg-white border border-slate-200 text-slate-500 hover:border-slate-300"
+                  }`}
+              >
+                LEVEL {lvl}
+              </button>
+            ))}
           </div>
           <button
             onClick={handleOpenCreateModal}
@@ -190,7 +209,7 @@ export default function AdminModulesPage() {
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
           <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col animate-scale-up">
-            
+
             {/* Pop-up Header */}
             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <div>
@@ -199,7 +218,7 @@ export default function AdminModulesPage() {
                 </h2>
                 <p className="text-[11px] font-bold text-slate-400 m-0">Zəhmət olmasa bütün sahələri tam doldurun.</p>
               </div>
-              <button 
+              <button
                 onClick={handleCloseModal}
                 disabled={isSubmitting}
                 className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-200/50 transition-all disabled:opacity-30"
@@ -210,7 +229,7 @@ export default function AdminModulesPage() {
 
             {/* Pop-up Formu (Scroll edilə bilən gövdə) */}
             <form onSubmit={handleSubmit} className="overflow-y-auto p-6 space-y-4 flex-1">
-              
+
               {/* Validation Error Qutusu */}
               {validationError && (
                 <div className="bg-rose-50 border-2 border-rose-100 text-rose-700 px-4 py-2.5 rounded-xl font-bold text-xs">
@@ -219,9 +238,22 @@ export default function AdminModulesPage() {
               )}
 
               <div className="grid grid-cols-4 gap-4">
+
+                <div className="col-span-2">
+                  <label className="text-[11px] font-black text-slate-400 uppercase block mb-1">Level</label>
+                  <select
+                    value={form.level}
+                    onChange={(e) => setForm({ ...form, level: Number(e.target.value) })}
+                    className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl font-bold text-xs outline-none focus:border-emerald-500"
+                  >
+                    <option value={1}>Level 1</option>
+                    <option value={2}>Level 2</option>
+                    <option value={3}>Level 3</option>
+                  </select>
+                </div>
                 <div className="col-span-3">
                   <label className="text-[11px] font-black text-slate-400 uppercase block mb-1">Modulun Başlığı</label>
-                  <input 
+                  <input
                     type="text"
                     disabled={isSubmitting}
                     value={form.title}
@@ -232,7 +264,7 @@ export default function AdminModulesPage() {
                 </div>
                 <div>
                   <label className="text-[11px] font-black text-slate-400 uppercase block mb-1">Sıra Nömrəsi</label>
-                  <input 
+                  <input
                     type="number"
                     disabled={isSubmitting}
                     value={form.order}
@@ -244,7 +276,7 @@ export default function AdminModulesPage() {
 
               <div>
                 <label className="text-[11px] font-black text-slate-400 uppercase block mb-1">Dərs Videosu (YouTube URL)</label>
-                <input 
+                <input
                   type="url"
                   disabled={isSubmitting}
                   value={form.videoUrl}
@@ -256,7 +288,7 @@ export default function AdminModulesPage() {
 
               <div>
                 <label className="text-[11px] font-black text-slate-400 uppercase block mb-1">Dərsin Geniş Mətn İzahı (Markdown formatında)</label>
-                <textarea 
+                <textarea
                   rows={8}
                   disabled={isSubmitting}
                   value={form.content}

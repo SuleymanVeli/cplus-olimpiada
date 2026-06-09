@@ -35,6 +35,8 @@ export default function AdminTasksPage() {
   const [activeTab, setActiveTab] = useState<'form' | 'json'>('form');
   const [jsonInput, setJsonInput] = useState<string>('');
 
+  const [selectedLevel, setSelectedLevel] = useState<number>(1);
+
   const [form, setForm] = useState<TaskForm>({
     title: '',
     description: '',
@@ -44,7 +46,7 @@ export default function AdminTasksPage() {
     points: 10,
     order: 1,
   });
-  
+
   const [testCases, setTestCases] = useState<TestCaseForm[]>([
     { input: '', output: '', isSample: false }
   ]);
@@ -71,18 +73,25 @@ export default function AdminTasksPage() {
   useEffect(() => {
     async function loadModules() {
       try {
-        const res = await fetch('/api/admin/modules');
+        // API-yə level parametrini göndəririk
+        const res = await fetch(`/api/admin/modules?level=${selectedLevel}`);
         const result = await res.json();
-        if (result.success && result.data.length > 0) {
+
+        if (result.success) {
           setModules(result.data);
-          setSelectedModuleId(result.data[0]._id);
+          if (result.data.length > 0) {
+            setSelectedModuleId(result.data[0]._id);
+          } else {
+            setSelectedModuleId('');
+            setTasks([]); // Modul yoxdursa tapşırıqları təmizlə
+          }
         }
       } catch (err) {
         console.error("Modullar yüklənərkən xəta:", err);
       }
     }
     loadModules();
-  }, []);
+  }, [selectedLevel]); // Level dəyişdikdə avtomatik işə düşəcək
 
   // Seçilmiş modul dəyişdikdə tapşırıq siyahısını yeniləyirik
   useEffect(() => {
@@ -108,7 +117,7 @@ export default function AdminTasksPage() {
     setEditingTaskId(null);
     setValidationError(null);
     setActiveTab('form'); // Yeni yaradanda standart olaraq form ilə açılsın (istəsə JSON-a keçər)
-    
+
     const nextOrder = tasks.length + 1;
     setForm({
       title: '',
@@ -120,7 +129,7 @@ export default function AdminTasksPage() {
       order: nextOrder,
     });
     setTestCases([{ input: '', output: '', isSample: false }]);
-    
+
     // Default JSON şablonunu təyin edirik
     setJsonInput(getDefaultJsonTemplate(nextOrder));
     setIsModalOpen(true);
@@ -129,7 +138,7 @@ export default function AdminTasksPage() {
   const handleOpenEditModal = (task: any) => {
     setEditingTaskId(task._id);
     setValidationError(null);
-    setActiveTab('form'); 
+    setActiveTab('form');
     setForm({
       title: task.title,
       description: task.description,
@@ -199,7 +208,7 @@ export default function AdminTasksPage() {
       if (!form.description.trim()) return setValidationError("Məsələnin şərti mütləq daxil edilməlidir!");
       if (!form.inputFormat.trim()) return setValidationError("Giriş verilənlərinin formatı qeyd olunmalıdır!");
       if (!form.outputFormat.trim()) return setValidationError("Çıxış verilənlərinin formatı qeyd olunmalıdır!");
-      
+
       for (let i = 0; i < testCases.length; i++) {
         if (!testCases[i].input.trim() || !testCases[i].output.trim()) {
           return setValidationError(`Test Case #${i + 1}-in giriş və ya çıxış sahəsi boş qala bilməz!`);
@@ -227,7 +236,7 @@ export default function AdminTasksPage() {
         if (!parsedJson.outputFormat?.trim()) return setValidationError("JSON Xətası: 'outputFormat' boş ola bilməz!");
         if (typeof parsedJson.points !== 'number') return setValidationError("JSON Xətası: 'points' rəqəm tipində olmalıdır!");
         if (typeof parsedJson.order !== 'number') return setValidationError("JSON Xətası: 'order' rəqəm tipində olmalıdır!");
-        
+
         if (!Array.isArray(parsedJson.testCases) || parsedJson.testCases.length === 0) {
           return setValidationError("JSON Xətası: 'testCases' massivi mütləq olmalı və ən azı 1 test case daxil edilməlidir!");
         }
@@ -276,15 +285,27 @@ export default function AdminTasksPage() {
   return (
     <div className="min-h-screen bg-slate-50 p-8 text-slate-800 font-sans">
       <div className="max-w-6xl mx-auto space-y-6">
-        
+
         {/* ÜST FİLTR BAR-I VƏ ƏLAVƏ ET DÜYMƏSİ */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-3">
-            <div className="bg-sky-50 p-2.5 rounded-xl text-sky-600 border border-sky-100">
-              <Layers size={20} />
-            </div>
+          <div className="flex items-center gap-6">
+            {/* Level Seçimi */}
             <div>
-              <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block">Aktiv Mövzu Filtri</span>
+              <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block">Level Seç</span>
+              <select
+                value={selectedLevel}
+                onChange={(e) => setSelectedLevel(Number(e.target.value))}
+                className="py-1 border-b-2 border-slate-200 text-sm font-black bg-transparent text-slate-800 outline-none focus:border-sky-500 cursor-pointer"
+              >
+                <option value={1}>Level 1</option>
+                <option value={2}>Level 2</option>
+                <option value={3}>Level 3</option>
+              </select>
+            </div>
+
+            {/* Mövcud Modul Filtri */}
+            <div>
+              <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block">Aktiv Mövzu</span>
               <select
                 value={selectedModuleId}
                 onChange={(e) => setSelectedModuleId(e.target.value)}
@@ -368,7 +389,7 @@ export default function AdminTasksPage() {
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
           <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-3xl overflow-hidden max-h-[92vh] flex flex-col animate-scale-up">
-            
+
             {/* Modal Header */}
             <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-slate-50/50">
               <div>
@@ -377,7 +398,7 @@ export default function AdminTasksPage() {
                 </h2>
                 <p className="text-[11px] font-bold text-slate-400 m-0">Wandbox kompilyatoru üçün test case-ləri tam dəqiq yazın.</p>
               </div>
-              
+
               {/* Tab Seçimi (Form / JSON) */}
               <div className="flex items-center gap-1 bg-slate-200/70 p-1 rounded-xl self-start sm:self-center">
                 <button
@@ -396,7 +417,7 @@ export default function AdminTasksPage() {
                 </button>
               </div>
 
-              <button 
+              <button
                 onClick={() => !isSubmitting && setIsModalOpen(false)}
                 disabled={isSubmitting}
                 className="absolute top-5 right-5 sm:relative sm:top-auto sm:right-auto text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-200/50 transition-all disabled:opacity-30"
@@ -407,7 +428,7 @@ export default function AdminTasksPage() {
 
             {/* Modal Form Content */}
             <form onSubmit={handleSubmit} className="overflow-y-auto p-6 space-y-4 flex-1 flex flex-col">
-              
+
               {validationError && (
                 <div className="bg-rose-50 border-2 border-rose-100 text-rose-700 px-4 py-2.5 rounded-xl font-bold text-xs whitespace-pre-wrap">
                   ⚠️ {validationError}
@@ -420,20 +441,20 @@ export default function AdminTasksPage() {
                   <div className="grid grid-cols-3 gap-4">
                     <div className="col-span-2">
                       <label className="text-[11px] font-black text-slate-400 uppercase block mb-1">Məsələnin Adı (Title)</label>
-                      <input 
+                      <input
                         type="text" disabled={isSubmitting}
                         value={form.title}
-                        onChange={(e) => setForm({...form, title: e.target.value})}
+                        onChange={(e) => setForm({ ...form, title: e.target.value })}
                         placeholder="Məsələn: İki ədədin cəmi"
                         className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl font-bold text-xs outline-none focus:border-sky-500 disabled:bg-slate-50"
                       />
                     </div>
                     <div>
                       <label className="text-[11px] font-black text-slate-400 uppercase block mb-1">Modul İçi Sıra (Order)</label>
-                      <input 
+                      <input
                         type="number" disabled={isSubmitting}
                         value={form.order}
-                        onChange={(e) => setForm({...form, order: Number(e.target.value)})}
+                        onChange={(e) => setForm({ ...form, order: Number(e.target.value) })}
                         className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl font-black text-xs outline-none focus:border-sky-500 disabled:bg-slate-50"
                       />
                     </div>
@@ -441,10 +462,10 @@ export default function AdminTasksPage() {
 
                   <div>
                     <label className="text-[11px] font-black text-slate-400 uppercase block mb-1">Məsələnin Şərti / Nağılı (Description)</label>
-                    <textarea 
+                    <textarea
                       rows={4} disabled={isSubmitting}
                       value={form.description}
-                      onChange={(e) => setForm({...form, description: e.target.value})}
+                      onChange={(e) => setForm({ ...form, description: e.target.value })}
                       placeholder="Sehrli meşədə iki sincab qoz toplayır..."
                       className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl font-medium text-xs outline-none focus:border-sky-500 font-mono leading-relaxed disabled:bg-slate-50"
                     />
@@ -453,20 +474,20 @@ export default function AdminTasksPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="text-[11px] font-black text-slate-400 uppercase block mb-1">Giriş Formatı (Input Format)</label>
-                      <input 
+                      <input
                         type="text" disabled={isSubmitting}
                         value={form.inputFormat}
-                        onChange={(e) => setForm({...form, inputFormat: e.target.value})}
+                        onChange={(e) => setForm({ ...form, inputFormat: e.target.value })}
                         placeholder="Girişdə iki tam ədəd daxil edilir."
                         className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl font-semibold text-xs outline-none focus:border-sky-500 disabled:bg-slate-50"
                       />
                     </div>
                     <div>
                       <label className="text-[11px] font-black text-slate-400 uppercase block mb-1">Çıxış Formatı (Output Format)</label>
-                      <input 
+                      <input
                         type="text" disabled={isSubmitting}
                         value={form.outputFormat}
-                        onChange={(e) => setForm({...form, outputFormat: e.target.value})}
+                        onChange={(e) => setForm({ ...form, outputFormat: e.target.value })}
                         placeholder="Ekrana ədədlərin cəmini çıxarın."
                         className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl font-semibold text-xs outline-none focus:border-sky-500 disabled:bg-slate-50"
                       />
@@ -476,20 +497,20 @@ export default function AdminTasksPage() {
                   <div className="grid grid-cols-3 gap-4">
                     <div className="col-span-2">
                       <label className="text-[11px] font-black text-slate-400 uppercase block mb-1">Məhdudiyyətlər (Constraints)</label>
-                      <input 
+                      <input
                         type="text" disabled={isSubmitting}
                         value={form.constraints}
-                        onChange={(e) => setForm({...form, constraints: e.target.value})}
+                        onChange={(e) => setForm({ ...form, constraints: e.target.value })}
                         placeholder="Məsələn: 1 <= A, B <= 10^5"
                         className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl font-bold text-xs outline-none focus:border-sky-500 font-mono disabled:bg-slate-50"
                       />
                     </div>
                     <div>
                       <label className="text-[11px] font-black text-slate-400 uppercase block mb-1">XP / Mükafat Balı</label>
-                      <input 
+                      <input
                         type="number" disabled={isSubmitting}
                         value={form.points}
-                        onChange={(e) => setForm({...form, points: Number(e.target.value)})}
+                        onChange={(e) => setForm({ ...form, points: Number(e.target.value) })}
                         className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl font-black text-xs outline-none focus:border-sky-500 disabled:bg-slate-50"
                       />
                     </div>
@@ -533,7 +554,7 @@ export default function AdminTasksPage() {
                             className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-xs font-mono outline-none focus:border-sky-400 disabled:bg-slate-50"
                           />
                         </div>
-                        
+
                         <div className="flex items-center gap-2 sm:pt-4">
                           <div className="flex items-center gap-1 bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-200">
                             <input

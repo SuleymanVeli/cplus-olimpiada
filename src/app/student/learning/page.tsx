@@ -197,7 +197,7 @@ export default function GamingPath() {
       });
     }
 
-    for (let i = 0; i < 150; i++) {
+    for (let i = 0; i < 550; i++) {
       let y = Math.random() * mapHeight;
       let x = Math.random() * canvas.width;
 

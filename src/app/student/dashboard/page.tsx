@@ -8,7 +8,7 @@ import { useTransition } from '@/src/context/TransitionContext';
 // Səviyyə məlumatları (x və y faiz ilə: 0-100%)
 const components = [
     { name: 'Başlanğıc', x: 25, y: 40, img: '/badges/baslangic.png', link: '/student/learning', type: 'level', level: 1 },
-    { name: 'Orta', x: 51, y: 30, img: '/badges/level2.png', link: '/student/learning', type: 'level', level: 2 },
+    { name: 'Orta', x: 51, y: 30, img: '/badges/level2.png', link: '/student/adventure', type: 'level', level: 2 },
     { name: 'Yüksək', x: 78, y: 40, img: '/badges/level3.png', link: '/student/learning', type: 'level', level: 3 },
     { name: 'Robot', x: 51, y: 72, img: '/badges/robot1.png', link: '/student/gamearena', type: 'robot' },
     // { name: 'Robot', x: 32, y: 75, img: '/badges/coin-1.png', link: '/student/learning', type: 'coin' },

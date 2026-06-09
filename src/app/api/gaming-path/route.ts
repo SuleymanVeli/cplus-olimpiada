@@ -11,11 +11,21 @@ export async function GET(req: NextRequest) {
     if (!req.nextUrl.searchParams.has('userId')) {
       return NextResponse.json({ success: false, message: "userId query parameter is required." }, { status: 400 });
     }
-  
+
     const userId = req.nextUrl.searchParams.get('userId')!;
-  
+
+    const level = parseInt(req.nextUrl.searchParams.get('level') || '1', 10);
+
     // Bütün modulları və içindəki taskları çəkirik
-    const modules = await Module.find({}).sort({ order: 1 }).populate({ path: 'tasks', model: Task }).lean();
+    // Modullerda level olmayanda 1 olaraq qəbul edirik
+    const query = (level === 1)
+      ? { $or: [{ level: 1 }, { level: { $exists: false } }, { level: null }] }
+      : { level: level };
+
+    const modules = await Module.find(query)
+      .sort({ order: 1 })
+      .populate({ path: 'tasks', model: Task })
+      .lean();
     let progress = await UserProgress.findOne({ userId: userId });
 
     // Əgər progress yoxdursa ilk modulla başladırıq
@@ -24,11 +34,12 @@ export async function GET(req: NextRequest) {
         userId: userId,
         totalXp: 0,
         currentModuleId: modules[0]._id,
-        currentTaskOrder: 0, 
+        currentTaskOrder: 0,
         completedLessons: [],
         completedTasks: [],
         completedModules: [],
-        solvedTasks: []
+        solvedTasks: [],
+        level: level
       });
     }
 
@@ -68,7 +79,7 @@ export async function GET(req: NextRequest) {
         sortedTasks.forEach((task: any, index: number) => {
           const taskOrder = index + 1; // 1, 2, 3...
           const isTaskCompleted = compTasks.includes(task._id.toString());
-          
+
           let taskStatus: 'completed' | 'active' | 'locked' = 'locked';
 
           if (isTaskCompleted || isModuleCompleted) {

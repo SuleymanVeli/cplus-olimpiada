@@ -24,7 +24,8 @@ export interface IUserProgress extends Document {
   completedGames: mongoose.Types.ObjectId[];   // 🚀 Xəritə API-ının yoxlaması üçün rahat array
   solvedTasks: ISolvedTask[];        
   playedGames: IPlayedGame[];       // Detallı kod və tarix tarixçəsi
-  completedModules: mongoose.Types.ObjectId[]; // 🚀 Tamamilə bitirdiyi modullar
+  completedModules: mongoose.Types.ObjectId[];
+  level: number; 
 }
 
 const SolvedTaskSchema = new Schema({
@@ -42,7 +43,7 @@ const PlayedGameSchema = new Schema({
 });
 
 const UserProgressSchema: Schema = new Schema({
-  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   totalXp: { type: Number, default: 0 },
   currentModuleId: { type: Schema.Types.ObjectId, ref: 'Module'},
   currentTaskOrder: { type: Number, default: 0 }, // Default: dərslə başlayır

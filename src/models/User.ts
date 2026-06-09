@@ -11,6 +11,7 @@ const UserSchema = new mongoose.Schema({
   isPro: { type: Boolean, default: false },        // Pro üzvlüklərin idarəsi üçün
   registeredAt: { type: Date },
   globalNote: { type: String, default: "" },
+  level: { type: Number, default: 1 }, // Şagirdin səviyyəsi (XP-yə görə)
   assignedTasks: [{
     taskId: { type: mongoose.Schema.Types.ObjectId, ref: 'Task' },
     assignedAt: { type: Date, default: Date.now }
