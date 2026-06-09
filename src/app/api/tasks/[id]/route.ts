@@ -27,8 +27,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const associatedModule = task.moduleId as any;
 
+    const level = associatedModule.level || 1;;
+
     // 2. Şagirdin tərəqqisini yoxlayırıq ki, bu tapşırığa giriş icazəsi var ya yox
-    const progress = await UserProgress.findOne({ userId: mockUserId, level: associatedModule.level }).lean();
+    const progress = await UserProgress.findOne({ userId: mockUserId, level: level }).lean();
 
     if (!progress) {
       return NextResponse.json(

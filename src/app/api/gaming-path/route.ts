@@ -18,15 +18,12 @@ export async function GET(req: NextRequest) {
 
     // Bütün modulları və içindəki taskları çəkirik
     // Modullerda level olmayanda 1 olaraq qəbul edirik
-    const query = (level === 1)
-      ? { $or: [{ level: 1 }, { level: { $exists: false } }, { level: null }] }
-      : { level: level };
 
-    const modules = await Module.find(query)
+    const modules = await Module.find({ level: level })
       .sort({ order: 1 })
       .populate({ path: 'tasks', model: Task })
       .lean();
-    let progress = await UserProgress.findOne({ userId: userId });
+    let progress = await UserProgress.findOne({ userId: userId , level: level }).lean();
 
     // Əgər progress yoxdursa ilk modulla başladırıq
     if (!progress && modules.length > 0) {

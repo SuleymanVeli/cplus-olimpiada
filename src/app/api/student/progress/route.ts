@@ -74,7 +74,7 @@ export async function POST(request: Request) {
             progress.completedModules.push(task.moduleId);
           }
 
-          const nextModule = await Module.findOne({ order: { $gt: (await Module.findById(task.moduleId)).order } }).sort({ order: 1 });
+          const nextModule = await Module.findOne({ order: { $gt: (await Module.findById(task.moduleId)).order }, level: level }).sort({ order: 1 });
           
           if (nextModule) {
             progress.currentModuleId = nextModule._id;
