@@ -1,14 +1,11 @@
 'use client';
-
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit3, Trash2, X, Loader2, Save, Layers, HelpCircle, Code, FileText } from 'lucide-react';
-
 interface TestCaseForm {
   input: string;
   output: string;
   isSample: boolean;
 }
-
 interface TaskForm {
   title: string;
   description: string;
@@ -18,25 +15,24 @@ interface TaskForm {
   points: number;
   order: number;
 }
-
 export default function AdminTasksPage() {
   const [modules, setModules] = useState<any[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
   const [selectedModuleId, setSelectedModuleId] = useState<string>('');
   const [isLoadingTasks, setIsLoadingTasks] = useState(false);
-
   // Pop-up və Form State-ləri
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
-
   // Yeni əlavə olunan rejim state-i: 'form' və ya 'json'
   const [activeTab, setActiveTab] = useState<'form' | 'json'>('form');
   const [jsonInput, setJsonInput] = useState<string>('');
-
   const [selectedLevel, setSelectedLevel] = useState<number>(1);
-
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+  const [bulkJson, setBulkJson] = useState("");
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  const [isBulkSubmitting, setIsBulkSubmitting] = useState(false);
   const [form, setForm] = useState<TaskForm>({
     title: '',
     description: '',
@@ -46,11 +42,9 @@ export default function AdminTasksPage() {
     points: 10,
     order: 1,
   });
-
   const [testCases, setTestCases] = useState<TestCaseForm[]>([
     { input: '', output: '', isSample: false }
   ]);
-
   // JSON şablonunu default olaraq gətirən funksiya
   const getDefaultJsonTemplate = (nextOrder: number) => {
     const template = {
@@ -68,7 +62,6 @@ export default function AdminTasksPage() {
     };
     return JSON.stringify(template, null, 2); // Avtomatik Beautify olunmuş format
   };
-
   // Modulları API-dən çəkirik
   useEffect(() => {
     async function loadModules() {
@@ -76,7 +69,6 @@ export default function AdminTasksPage() {
         // API-yə level parametrini göndəririk
         const res = await fetch(`/api/admin/modules?level=${selectedLevel}`);
         const result = await res.json();
-
         if (result.success) {
           setModules(result.data);
           if (result.data.length > 0) {
@@ -92,14 +84,12 @@ export default function AdminTasksPage() {
     }
     loadModules();
   }, [selectedLevel]); // Level dəyişdikdə avtomatik işə düşəcək
-
   // Seçilmiş modul dəyişdikdə tapşırıq siyahısını yeniləyirik
   useEffect(() => {
     if (selectedModuleId) {
       fetchTasks(selectedModuleId);
     }
   }, [selectedModuleId]);
-
   const fetchTasks = async (modId: string) => {
     setIsLoadingTasks(true);
     try {
@@ -112,12 +102,10 @@ export default function AdminTasksPage() {
       setIsLoadingTasks(false);
     }
   };
-
   const handleOpenCreateModal = () => {
     setEditingTaskId(null);
     setValidationError(null);
     setActiveTab('form'); // Yeni yaradanda standart olaraq form ilə açılsın (istəsə JSON-a keçər)
-
     const nextOrder = tasks.length + 1;
     setForm({
       title: '',
@@ -129,12 +117,10 @@ export default function AdminTasksPage() {
       order: nextOrder,
     });
     setTestCases([{ input: '', output: '', isSample: false }]);
-
     // Default JSON şablonunu təyin edirik
     setJsonInput(getDefaultJsonTemplate(nextOrder));
     setIsModalOpen(true);
   };
-
   const handleOpenEditModal = (task: any) => {
     setEditingTaskId(task._id);
     setValidationError(null);
@@ -150,7 +136,6 @@ export default function AdminTasksPage() {
     });
     const mappedTestCases = task.testCases || [{ input: '', output: '', isSample: false }];
     setTestCases(mappedTestCases);
-
     // Redaktə rejmində də mövcud məlumatları JSON formatına salıb göstəririk
     const currentTaskJson = {
       title: task.title,
@@ -169,22 +154,18 @@ export default function AdminTasksPage() {
     setJsonInput(JSON.stringify(currentTaskJson, null, 2));
     setIsModalOpen(true);
   };
-
   // Dinamik Test Case Sətirlərinin İdarəsi
   const handleAddTestCaseRow = () => {
     setTestCases([...testCases, { input: '', output: '', isSample: false }]);
   };
-
   const handleRemoveTestCaseRow = (index: number) => {
     setTestCases(testCases.filter((_, i) => i !== index));
   };
-
   const handleTestCaseChange = (index: number, field: keyof TestCaseForm, value: any) => {
     const updated = [...testCases];
     updated[index] = { ...updated[index], [field]: value };
     setTestCases(updated);
   };
-
   // Canlı JSON Beautify düyməsi funksiyası
   const handleBeautifyJson = () => {
     try {
@@ -195,26 +176,21 @@ export default function AdminTasksPage() {
       setValidationError(`Formatlama xətası: Sxem düzgün JSON deyil! (${err.message})`);
     }
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setValidationError(null);
-
     let payload: any = { moduleId: selectedModuleId };
-
     if (activeTab === 'form') {
       // 1. Form Rejimi Validasiyası
       if (!form.title.trim()) return setValidationError("Tapşırıq adı boş qala bilməz!");
       if (!form.description.trim()) return setValidationError("Məsələnin şərti mütləq daxil edilməlidir!");
       if (!form.inputFormat.trim()) return setValidationError("Giriş verilənlərinin formatı qeyd olunmalıdır!");
       if (!form.outputFormat.trim()) return setValidationError("Çıxış verilənlərinin formatı qeyd olunmalıdır!");
-
       for (let i = 0; i < testCases.length; i++) {
         if (!testCases[i].input.trim() || !testCases[i].output.trim()) {
           return setValidationError(`Test Case #${i + 1}-in giriş və ya çıxış sahəsi boş qala bilməz!`);
         }
       }
-
       payload = {
         ...payload,
         ...form,
@@ -228,7 +204,6 @@ export default function AdminTasksPage() {
       // 2. JSON Rejimi Validasiyası
       try {
         const parsedJson = JSON.parse(jsonInput);
-
         // Sahələrin daxildə yoxlanılması (Strict Validation)
         if (!parsedJson.title?.trim()) return setValidationError("JSON Xətası: 'title' boş ola bilməz!");
         if (!parsedJson.description?.trim()) return setValidationError("JSON Xətası: 'description' boş ola bilməz!");
@@ -236,18 +211,15 @@ export default function AdminTasksPage() {
         if (!parsedJson.outputFormat?.trim()) return setValidationError("JSON Xətası: 'outputFormat' boş ola bilməz!");
         if (typeof parsedJson.points !== 'number') return setValidationError("JSON Xətası: 'points' rəqəm tipində olmalıdır!");
         if (typeof parsedJson.order !== 'number') return setValidationError("JSON Xətası: 'order' rəqəm tipində olmalıdır!");
-
         if (!Array.isArray(parsedJson.testCases) || parsedJson.testCases.length === 0) {
           return setValidationError("JSON Xətası: 'testCases' massivi mütləq olmalı və ən azı 1 test case daxil edilməlidir!");
         }
-
         for (let i = 0; i < parsedJson.testCases.length; i++) {
           const tc = parsedJson.testCases[i];
           if (tc.input === undefined || tc.output === undefined) {
             return setValidationError(`JSON Xətası: Test Case #${i + 1} daxilində 'input' və ya 'output' çatışmır!`);
           }
         }
-
         payload = {
           ...payload,
           ...parsedJson
@@ -256,11 +228,9 @@ export default function AdminTasksPage() {
         return setValidationError(`Sintaksis Xətası: JSON formatı tamamilə yanlışdır! (${err.message})`);
       }
     }
-
     setIsSubmitting(true);
     const url = editingTaskId ? `/api/admin/tasks/${editingTaskId}` : '/api/admin/tasks';
     const method = editingTaskId ? 'PUT' : 'POST';
-
     try {
       const res = await fetch(url, {
         method,
@@ -268,7 +238,6 @@ export default function AdminTasksPage() {
         body: JSON.stringify(payload)
       });
       const result = await res.json();
-
       if (result.success) {
         setIsModalOpen(false);
         fetchTasks(selectedModuleId);
@@ -282,21 +251,95 @@ export default function AdminTasksPage() {
     }
   };
 
+  
+  const handleBulkSubmit = async () => {
+    setBulkError(null);
+    let parsed: any;
+    try {
+      parsed = JSON.parse(bulkJson);
+    } catch (err: any) {
+      return setBulkError(
+        "JSON format xətası: " + err.message
+      );
+    }
+    if (!Array.isArray(parsed)) {
+      return setBulkError(
+        "Kök element array olmalıdır []"
+      );
+    }
+    if (parsed.length === 0) {
+      return setBulkError(
+        "Array boş ola bilməz"
+      );
+    }
+    const orders = parsed.map(x => x.order);
+    if (new Set(orders).size !== orders.length) {
+      return setBulkError(
+        "Eyni order ilə bir neçə task göndərilə bilməz"
+      );
+    }
+    for (let i = 0; i < parsed.length; i++) {
+      const item = parsed[i];
+      if (!item.title)
+        return setBulkError(
+          `#${i + 1} title yoxdur`
+        );
+      if (!item.description)
+        return setBulkError(
+          `#${i + 1} description yoxdur`
+        );
+      if (typeof item.points !== "number")
+        return setBulkError(
+          `#${i + 1} points number olmalıdır`
+        );
+      if (!Array.isArray(item.testCases))
+        return setBulkError(
+          `#${i + 1} testCases array olmalıdır`
+        );
+    }
+    setIsBulkSubmitting(true);
+    try {
+      const res = await fetch(
+        "/api/admin/tasks/bulk",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            moduleId: selectedModuleId,
+            tasks: parsed
+          })
+        }
+      );
+      const result = await res.json();
+      if (result.success) {
+        setIsBulkModalOpen(false);
+        fetchTasks(selectedModuleId);
+      }
+      else {
+        setBulkError(result.message);
+      }
+    } catch (err) {
+      setBulkError(
+        "Server xətası"
+      );
+    }
+    finally {
+      setIsBulkSubmitting(false);
+    }
+  }
   return (
     <div className="min-h-screen bg-slate-50 p-8 text-slate-800 font-sans">
       <div className="max-w-6xl mx-auto space-y-6 px-3 sm:px-0">
-
         {/* ÜST FİLTR BAR-I VƏ ƏLAVƏ ET DÜYMƏSİ */}
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
-
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
-
             {/* Level Seçimi */}
             <div className="w-full sm:w-auto">
               <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block">
                 Level Seç
               </span>
-
               <select
                 value={selectedLevel}
                 onChange={(e) => setSelectedLevel(Number(e.target.value))}
@@ -307,34 +350,24 @@ export default function AdminTasksPage() {
                 <option value={3}>Level 3</option>
               </select>
             </div>
-
-
             {/* Mövcud Modul Filtri */}
             <div className="w-full sm:w-auto">
-
               <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block">
                 Aktiv Mövzu
               </span>
-
               <select
                 value={selectedModuleId}
                 onChange={(e) => setSelectedModuleId(e.target.value)}
                 className="w-full sm:w-auto py-1 border-b-2 border-slate-200 text-sm font-black bg-transparent text-slate-800 outline-none focus:border-sky-500 cursor-pointer pr-4"
               >
-
                 {modules.map(m => (
                   <option key={m._id} value={m._id}>
                     {m.order}. {m.title}
                   </option>
                 ))}
-
               </select>
-
             </div>
-
           </div>
-
-
           <button
             onClick={handleOpenCreateModal}
             disabled={modules.length === 0}
@@ -342,149 +375,153 @@ export default function AdminTasksPage() {
           >
             <Plus size={15} /> Yeni Arena Tapşırığı Qur
           </button>
-
+          <button
+            onClick={() => {
+              setBulkError(null);
+              setBulkJson(JSON.stringify([
+                {
+                  title: "İki ədədin cəmi",
+                  description: "İki ədəd verilir cəmini tapın",
+                  inputFormat: "2 tam ədəd",
+                  outputFormat: "Cəm",
+                  constraints: "1 <= N <= 100",
+                  points: 10,
+                  order: 1,
+                  testCases: [
+                    {
+                      input: "5 10",
+                      output: "15",
+                      isSample: true
+                    }
+                  ]
+                }
+              ], null, 2));
+              setIsBulkModalOpen(true);
+            }}
+            className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white font-black text-xs px-5 py-3 rounded-xl uppercase tracking-wider"
+          >
+            JSON ilə Çoxlu Əlavə Et
+          </button>
         </div>
-
-
-
         {/* TAPŞIRIQ CƏDVƏLİ */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-
-
           {isLoadingTasks ? (
-
             <div className="p-12 flex flex-col items-center justify-center gap-2 text-slate-400">
               <Loader2 className="animate-spin text-sky-500" size={32} />
               <span className="text-xs font-black uppercase tracking-wider">
                 Tapşırıqlar yüklənir...
               </span>
             </div>
-
-
           ) : tasks.length === 0 ? (
-
-
             <div className="p-12 text-center text-xs font-bold text-slate-400 italic">
               Seçilmiş mövzuya aid hələ heç bir arena tapşırığı əlavə edilməyib.
             </div>
-
-
           ) : (
-
             <div className="overflow-x-auto">
-
               <table className="w-full min-w-[800px] text-left border-collapse">
-
-
                 <thead>
-
                   <tr className="bg-slate-50/70 border-b border-slate-200 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-
                     <th className="py-4 px-6 w-20 text-center">
                       Arena No
                     </th>
-
                     <th className="py-4 px-6">
                       Tapşırığın Adı
                     </th>
-
                     <th className="py-4 px-6">
                       Xal (Points)
                     </th>
-
                     <th className="py-4 px-6 w-32 text-center">
                       Sınaq Testləri
                     </th>
-
                     <th className="py-4 px-6 w-24 text-center">
                       Əməliyyat
                     </th>
-
                   </tr>
-
                 </thead>
-
-
-
                 <tbody className="divide-y divide-slate-100 text-xs font-bold text-slate-700">
-
                   {tasks.map((task) => (
-
                     <tr
                       key={task._id}
                       className="hover:bg-slate-50/50 transition-all"
                     >
-
-
                       <td className="py-4 px-6 text-center font-black text-slate-900 bg-slate-50/30 w-20 border-r border-slate-100">
                         #{task.order}
                       </td>
-
-
-
                       <td className="py-4 px-6 font-black text-sm text-slate-900 max-w-xs truncate">
                         {task.title}
                       </td>
-
-
-
                       <td className="py-4 px-6 text-slate-600">
-
                         <span className="bg-amber-50 text-amber-700 border border-amber-100 px-2.5 py-0.5 rounded-full text-[10px] font-black">
                           +{task.points} XP
                         </span>
-
                       </td>
-
-
-
                       <td className="py-4 px-6 text-center">
-
                         <span className="inline-flex items-center bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded-md text-[11px] font-black font-mono">
-
                           {task.testCases?.length || 0} Cases
-
                         </span>
-
                       </td>
-
-
-
                       <td className="py-4 px-6 text-center">
-
                         <button
                           onClick={() => handleOpenEditModal(task)}
                           className="bg-slate-100 hover:bg-sky-50 text-slate-600 hover:text-sky-700 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-sky-200 transition-all shadow-sm uppercase tracking-wide text-[10px] font-black"
                         >
                           Redaktə
                         </button>
-
                       </td>
-
-
                     </tr>
-
                   ))}
-
                 </tbody>
-
-
               </table>
-
             </div>
-
           )}
-
         </div>
-
-
       </div>
-
       {/* 🌟 REJİMLİ ADD / EDIT MODAL POP-UP-I */}
+      {isBulkModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-3xl p-6 space-y-4">
+            <div className="flex justify-between">
+              <h2 className="font-black text-lg">
+                🚀 Bulk JSON Import
+              </h2>
+              <button
+                onClick={() => setIsBulkModalOpen(false)}
+              >
+                <X />
+              </button>
+            </div>
+            {bulkError && (
+              <div className="bg-rose-50 text-rose-600 p-3 rounded-xl text-xs font-bold">
+                {bulkError}
+              </div>
+            )}
+            <textarea
+              value={bulkJson}
+              onChange={
+                e => setBulkJson(e.target.value)
+              }
+              className="w-full h-[450px] bg-slate-900 text-emerald-400 rounded-xl p-4 font-mono text-xs"
+              spellCheck={false}
+            />
+            <button
+              onClick={handleBulkSubmit}
+              disabled={isBulkSubmitting}
+              className="bg-purple-600 text-white px-6 py-3 rounded-xl font-black text-xs"
+            >
+              {
+                isBulkSubmitting
+                  ?
+                  "Yüklənir..."
+                  :
+                  "Taskları əlavə et"
+              }
+            </button>
+          </div>
+        </div>
+      )}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
           <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-3xl overflow-hidden max-h-[92vh] flex flex-col animate-scale-up">
-
             {/* Modal Header */}
             <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-slate-50/50">
               <div>
@@ -493,7 +530,6 @@ export default function AdminTasksPage() {
                 </h2>
                 <p className="text-[11px] font-bold text-slate-400 m-0">Wandbox kompilyatoru üçün test case-ləri tam dəqiq yazın.</p>
               </div>
-
               {/* Tab Seçimi (Form / JSON) */}
               <div className="flex items-center gap-1 bg-slate-200/70 p-1 rounded-xl self-start sm:self-center">
                 <button
@@ -511,7 +547,6 @@ export default function AdminTasksPage() {
                   <Code size={14} /> JSON Mode
                 </button>
               </div>
-
               <button
                 onClick={() => !isSubmitting && setIsModalOpen(false)}
                 disabled={isSubmitting}
@@ -520,16 +555,13 @@ export default function AdminTasksPage() {
                 <X size={18} />
               </button>
             </div>
-
             {/* Modal Form Content */}
             <form onSubmit={handleSubmit} className="overflow-y-auto p-6 space-y-4 flex-1 flex flex-col">
-
               {validationError && (
                 <div className="bg-rose-50 border-2 border-rose-100 text-rose-700 px-4 py-2.5 rounded-xl font-bold text-xs whitespace-pre-wrap">
                   ⚠️ {validationError}
                 </div>
               )}
-
               {/* 1. SEKTOR: STANDART FORM REJİMİ */}
               {activeTab === 'form' && (
                 <div className="space-y-4 flex-1">
@@ -554,7 +586,6 @@ export default function AdminTasksPage() {
                       />
                     </div>
                   </div>
-
                   <div>
                     <label className="text-[11px] font-black text-slate-400 uppercase block mb-1">Məsələnin Şərti / Nağılı (Description)</label>
                     <textarea
@@ -565,7 +596,6 @@ export default function AdminTasksPage() {
                       className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl font-medium text-xs outline-none focus:border-sky-500 font-mono leading-relaxed disabled:bg-slate-50"
                     />
                   </div>
-
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="text-[11px] font-black text-slate-400 uppercase block mb-1">Giriş Formatı (Input Format)</label>
@@ -588,7 +618,6 @@ export default function AdminTasksPage() {
                       />
                     </div>
                   </div>
-
                   <div className="grid grid-cols-3 gap-4">
                     <div className="col-span-2">
                       <label className="text-[11px] font-black text-slate-400 uppercase block mb-1">Məhdudiyyətlər (Constraints)</label>
@@ -610,7 +639,6 @@ export default function AdminTasksPage() {
                       />
                     </div>
                   </div>
-
                   {/* DİNAMİK TEST CASE SƏTİRLƏRİ */}
                   <div className="border-2 border-dashed border-slate-200 p-4 rounded-2xl space-y-3 bg-slate-50/50">
                     <div className="flex justify-between items-center">
@@ -626,7 +654,6 @@ export default function AdminTasksPage() {
                         + Yeni Test Əlavə Et
                       </button>
                     </div>
-
                     {testCases.map((tc, index) => (
                       <div key={index} className="flex flex-col sm:flex-row gap-3 items-end sm:items-center bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
                         <div className="flex-1 w-full">
@@ -649,7 +676,6 @@ export default function AdminTasksPage() {
                             className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-xs font-mono outline-none focus:border-sky-400 disabled:bg-slate-50"
                           />
                         </div>
-
                         <div className="flex items-center gap-2 sm:pt-4">
                           <div className="flex items-center gap-1 bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-200">
                             <input
@@ -662,7 +688,6 @@ export default function AdminTasksPage() {
                             />
                             <label htmlFor={`modal-sample-${index}`} className="text-[10px] font-black text-slate-400 cursor-pointer select-none whitespace-nowrap">Nümunə</label>
                           </div>
-
                           {testCases.length > 1 && (
                             <button
                               type="button"
@@ -679,7 +704,6 @@ export default function AdminTasksPage() {
                   </div>
                 </div>
               )}
-
               {/* 2. SEKTOR: SƏLİQƏLİ VƏ VALIDASIYALI JSON REJİMİ */}
               {activeTab === 'json' && (
                 <div className="flex flex-col flex-1 min-h-[350px] space-y-2">
@@ -711,7 +735,6 @@ export default function AdminTasksPage() {
                   </span>
                 </div>
               )}
-
               {/* Modal Pop-up Footer Actions */}
               <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 bg-white mt-auto">
                 <button
@@ -738,13 +761,10 @@ export default function AdminTasksPage() {
                   )}
                 </button>
               </div>
-
             </form>
-
           </div>
         </div>
       )}
-
       {/* Pop-up Animasiyaları */}
       <style jsx global>{`
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }

@@ -37,6 +37,7 @@ interface LessonData {
   content: string;
   nextTaskId?: string;
   order?: number;
+  level: number;
 }
 
 // Arenadakı ardıcıl yazı makinası hook-u
@@ -162,6 +163,7 @@ export default function InteractiveLessonPage() {
         body: JSON.stringify({
           userId: mockUserId,
           type: 'lesson',
+          level: lesson.level,
           id: lesson._id
         }),
       });

@@ -25,6 +25,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       title: currentModule.lessonTitle || `${currentModule.title} Mühazirəsi`,
       videoUrl: currentModule.videoUrl, // "https://www.youtube.com/embed/..."
       content: currentModule.content,   // HTML kontent
+      level: currentModule.level,
       nextTaskId: firstTask ? firstTask._id.toString() : null // 🚀 İlk taskın ID-si bura oturur
     };
 
