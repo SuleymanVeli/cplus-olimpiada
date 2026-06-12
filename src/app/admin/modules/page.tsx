@@ -115,95 +115,168 @@ export default function AdminModulesPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 p-8 text-slate-800 font-sans">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6 px-3 sm:px-0">
 
-        {/* SƏHİFƏ BAŞLIĞI VƏ YARATMA DÜYMƏSİ */}
-        <div className="flex justify-between items-center bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <div>
-            <h1 className="text-xl font-black text-slate-900 tracking-tight">📦 MODUL İDARƏETMƏSİ</h1>
-            <p className="text-xs font-semibold text-slate-400 m-0 mt-0.5">Xəritədəki əsas ulduz mövzuların siyahısı və məzmunu</p>
-          </div>
+  {/* SƏHİFƏ BAŞLIĞI VƏ YARATMA DÜYMƏSİ */}
+  <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
 
-          <div className="flex gap-2 mb-6">
-            {[1, 2, 3].map((lvl) => (
-              <button
-                key={lvl}
-                onClick={() => setCurrentLevel(lvl)}
-                className={`px-4 py-2 text-xs font-black rounded-lg transition-all ${currentLevel === lvl
-                  ? "bg-slate-900 text-white"
-                  : "bg-white border border-slate-200 text-slate-500 hover:border-slate-300"
-                  }`}
+    <div>
+      <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
+        📦 MODUL İDARƏETMƏSİ
+      </h1>
+      <p className="text-xs font-semibold text-slate-400 mt-0.5">
+        Xəritədəki əsas ulduz mövzuların siyahısı və məzmunu
+      </p>
+    </div>
+
+
+    <div className="flex gap-2 flex-wrap mb-0 lg:mb-0">
+      {[1, 2, 3].map((lvl) => (
+        <button
+          key={lvl}
+          onClick={() => setCurrentLevel(lvl)}
+          className={`px-3 sm:px-4 py-2 text-xs font-black rounded-lg transition-all ${
+            currentLevel === lvl
+              ? "bg-slate-900 text-white"
+              : "bg-white border border-slate-200 text-slate-500 hover:border-slate-300"
+          }`}
+        >
+          LEVEL {lvl}
+        </button>
+      ))}
+    </div>
+
+
+    <button
+      onClick={handleOpenCreateModal}
+      className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs px-5 py-3 rounded-xl uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-sm"
+    >
+      <Plus size={15} /> Yeni Modul Əlavə Et
+    </button>
+
+  </div>
+
+
+  {/* NORMALLAŞDIRILMIŞ LİST / CƏDVƏL SƏHİFƏSİ */}
+  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+
+    {isLoading ? (
+      <div className="p-12 flex flex-col items-center justify-center gap-2 text-slate-400">
+        <Loader2 className="animate-spin text-emerald-500" size={32} />
+        <span className="text-xs font-black uppercase tracking-wider">
+          Modullar yüklənir...
+        </span>
+      </div>
+
+    ) : modules.length === 0 ? (
+
+      <div className="p-12 text-center text-xs font-bold text-slate-400 italic">
+        Sistemdə hələ heç bir modul qeydə alınmayıb.
+      </div>
+
+    ) : (
+
+      <div className="overflow-x-auto">
+
+        <table className="w-full min-w-[800px] text-left border-collapse">
+
+          <thead>
+            <tr className="bg-slate-50/70 border-b border-slate-200 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+
+              <th className="py-4 px-6 w-20 text-center">
+                Sıra (Order)
+              </th>
+
+              <th className="py-4 px-6">
+                Modul Adı
+              </th>
+
+              <th className="py-4 px-6">
+                Video Linki
+              </th>
+
+              <th className="py-4 px-6 w-28 text-center">
+                Tapşırıqlar
+              </th>
+
+              <th className="py-4 px-6 w-24 text-center">
+                Əməliyyat
+              </th>
+
+            </tr>
+          </thead>
+
+
+          <tbody className="divide-y divide-slate-100 text-xs font-bold text-slate-700">
+
+            {modules.map((mod) => (
+
+              <tr
+                key={mod._id}
+                className="hover:bg-slate-50/50 transition-all"
               >
-                LEVEL {lvl}
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={handleOpenCreateModal}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs px-5 py-3 rounded-xl uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-sm"
-          >
-            <Plus size={15} /> Yeni Modul Əlavə Et
-          </button>
-        </div>
 
-        {/* NORMALLAŞDIRILMIŞ LİST / CƏDVƏL SƏHİFƏSİ */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          {isLoading ? (
-            <div className="p-12 flex flex-col items-center justify-center gap-2 text-slate-400">
-              <Loader2 className="animate-spin text-emerald-500" size={32} />
-              <span className="text-xs font-black uppercase tracking-wider">Modullar yüklənir...</span>
-            </div>
-          ) : modules.length === 0 ? (
-            <div className="p-12 text-center text-xs font-bold text-slate-400 italic">
-              Sistemdə hələ heç bir modul qeydə alınmayıb.
-            </div>
-          ) : (
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/70 border-b border-slate-200 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  <th className="py-4 px-6 w-20 text-center">Sıra (Order)</th>
-                  <th className="py-4 px-6">Modul Adı</th>
-                  <th className="py-4 px-6">Video Linki</th>
-                  <th className="py-4 px-6 w-28 text-center">Tapşırıqlar</th>
-                  <th className="py-4 px-6 w-24 text-center">Əməliyyat</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs font-bold text-slate-700">
-                {modules.map((mod) => (
-                  <tr key={mod._id} className="hover:bg-slate-50/50 transition-all">
-                    <td className="py-4 px-6 text-center font-black text-slate-900 bg-slate-50/30 w-20 border-r border-slate-100">
-                      #{mod.order}
-                    </td>
-                    <td className="py-4 px-6 font-black text-sm text-slate-900 max-w-xs truncate">
-                      {mod.title}
-                    </td>
-                    <td className="py-4 px-6 text-slate-400 font-mono text-[11px] max-w-xs truncate">
-                      <span className="inline-flex items-center gap-1 bg-sky-50 text-sky-700 px-2 py-0.5 rounded-md font-sans font-bold text-[10px] mr-1.5">
-                        <Video size={10} /> Video
-                      </span>
-                      {mod.videoUrl}
-                    </td>
-                    <td className="py-4 px-6 text-center">
-                      <span className="inline-flex items-center gap-1 bg-purple-50 text-purple-700 border border-purple-100 px-2.5 py-0.5 rounded-full text-[11px] font-black">
-                        <FileText size={11} /> {mod.tasks?.length || 0} Task
-                      </span>
-                    </td>
-                    <td className="py-4 px-6 text-center">
-                      <button
-                        onClick={() => handleOpenEditModal(mod)}
-                        className="bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-emerald-200 transition-all shadow-sm uppercase tracking-wide text-[10px] font-black"
-                      >
-                        Redaktə
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+                <td className="py-4 px-6 text-center font-black text-slate-900 bg-slate-50/30 w-20 border-r border-slate-100">
+                  #{mod.order}
+                </td>
+
+
+                <td className="py-4 px-6 font-black text-sm text-slate-900 max-w-xs truncate">
+                  {mod.title}
+                </td>
+
+
+                <td className="py-4 px-6 text-slate-400 font-mono text-[11px] max-w-xs">
+                  <div className="truncate">
+                    <span className="inline-flex items-center gap-1 bg-sky-50 text-sky-700 px-2 py-0.5 rounded-md font-sans font-bold text-[10px] mr-1.5">
+                      <Video size={10} /> Video
+                    </span>
+
+                    {mod.videoUrl}
+
+                  </div>
+                </td>
+
+
+                <td className="py-4 px-6 text-center">
+
+                  <span className="inline-flex items-center gap-1 bg-purple-50 text-purple-700 border border-purple-100 px-2.5 py-0.5 rounded-full text-[11px] font-black">
+
+                    <FileText size={11} /> 
+                    {mod.tasks?.length || 0} Task
+
+                  </span>
+
+                </td>
+
+
+                <td className="py-4 px-6 text-center">
+
+                  <button
+                    onClick={() => handleOpenEditModal(mod)}
+                    className="bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-emerald-200 transition-all shadow-sm uppercase tracking-wide text-[10px] font-black"
+                  >
+                    Redaktə
+                  </button>
+
+                </td>
+
+
+              </tr>
+
+            ))}
+
+          </tbody>
+
+        </table>
 
       </div>
+
+    )}
+
+  </div>
+
+</div>
 
       {/* 🌟 ADD / EDIT ÜÇÜN DİNAMİK POP-UP (MODAL) */}
       {isModalOpen && (

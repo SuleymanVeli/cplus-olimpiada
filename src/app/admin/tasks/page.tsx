@@ -284,18 +284,23 @@ export default function AdminTasksPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 p-8 text-slate-800 font-sans">
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-6 px-3 sm:px-0">
 
         {/* ÜST FİLTR BAR-I VƏ ƏLAVƏ ET DÜYMƏSİ */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-6">
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
+
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
+
             {/* Level Seçimi */}
-            <div>
-              <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block">Level Seç</span>
+            <div className="w-full sm:w-auto">
+              <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block">
+                Level Seç
+              </span>
+
               <select
                 value={selectedLevel}
                 onChange={(e) => setSelectedLevel(Number(e.target.value))}
-                className="py-1 border-b-2 border-slate-200 text-sm font-black bg-transparent text-slate-800 outline-none focus:border-sky-500 cursor-pointer"
+                className="w-full sm:w-auto py-1 border-b-2 border-slate-200 text-sm font-black bg-transparent text-slate-800 outline-none focus:border-sky-500 cursor-pointer"
               >
                 <option value={1}>Level 1</option>
                 <option value={2}>Level 2</option>
@@ -303,20 +308,32 @@ export default function AdminTasksPage() {
               </select>
             </div>
 
+
             {/* Mövcud Modul Filtri */}
-            <div>
-              <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block">Aktiv Mövzu</span>
+            <div className="w-full sm:w-auto">
+
+              <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block">
+                Aktiv Mövzu
+              </span>
+
               <select
                 value={selectedModuleId}
                 onChange={(e) => setSelectedModuleId(e.target.value)}
-                className="py-1 border-b-2 border-slate-200 text-sm font-black bg-transparent text-slate-800 outline-none focus:border-sky-500 cursor-pointer pr-4"
+                className="w-full sm:w-auto py-1 border-b-2 border-slate-200 text-sm font-black bg-transparent text-slate-800 outline-none focus:border-sky-500 cursor-pointer pr-4"
               >
+
                 {modules.map(m => (
-                  <option key={m._id} value={m._id}>{m.order}. {m.title}</option>
+                  <option key={m._id} value={m._id}>
+                    {m.order}. {m.title}
+                  </option>
                 ))}
+
               </select>
+
             </div>
+
           </div>
+
 
           <button
             onClick={handleOpenCreateModal}
@@ -325,63 +342,141 @@ export default function AdminTasksPage() {
           >
             <Plus size={15} /> Yeni Arena Tapşırığı Qur
           </button>
+
         </div>
+
+
 
         {/* TAPŞIRIQ CƏDVƏLİ */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+
+
           {isLoadingTasks ? (
+
             <div className="p-12 flex flex-col items-center justify-center gap-2 text-slate-400">
               <Loader2 className="animate-spin text-sky-500" size={32} />
-              <span className="text-xs font-black uppercase tracking-wider">Tapşırıqlar yüklənir...</span>
+              <span className="text-xs font-black uppercase tracking-wider">
+                Tapşırıqlar yüklənir...
+              </span>
             </div>
+
+
           ) : tasks.length === 0 ? (
+
+
             <div className="p-12 text-center text-xs font-bold text-slate-400 italic">
               Seçilmiş mövzuya aid hələ heç bir arena tapşırığı əlavə edilməyib.
             </div>
+
+
           ) : (
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/70 border-b border-slate-200 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  <th className="py-4 px-6 w-20 text-center">Arena No</th>
-                  <th className="py-4 px-6">Tapşırığın Adı</th>
-                  <th className="py-4 px-6">Xal (Points)</th>
-                  <th className="py-4 px-6 w-32 text-center">Sınaq Testləri</th>
-                  <th className="py-4 px-6 w-24 text-center">Əməliyyat</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs font-bold text-slate-700">
-                {tasks.map((task) => (
-                  <tr key={task._id} className="hover:bg-slate-50/50 transition-all">
-                    <td className="py-4 px-6 text-center font-black text-slate-900 bg-slate-50/30 w-20 border-r border-slate-100">
-                      #{task.order}
-                    </td>
-                    <td className="py-4 px-6 font-black text-sm text-slate-900 max-w-xs truncate">
-                      {task.title}
-                    </td>
-                    <td className="py-4 px-6 text-slate-600">
-                      <span className="bg-amber-50 text-amber-700 border border-amber-100 px-2.5 py-0.5 rounded-full text-[10px] font-black">
-                        +{task.points} XP
-                      </span>
-                    </td>
-                    <td className="py-4 px-6 text-center">
-                      <span className="inline-flex items-center bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded-md text-[11px] font-black font-mono">
-                        {task.testCases?.length || 0} Cases
-                      </span>
-                    </td>
-                    <td className="py-4 px-6 text-center">
-                      <button
-                        onClick={() => handleOpenEditModal(task)}
-                        className="bg-slate-100 hover:bg-sky-50 text-slate-600 hover:text-sky-700 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-sky-200 transition-all shadow-sm uppercase tracking-wide text-[10px] font-black"
-                      >
-                        Redaktə
-                      </button>
-                    </td>
+
+            <div className="overflow-x-auto">
+
+              <table className="w-full min-w-[800px] text-left border-collapse">
+
+
+                <thead>
+
+                  <tr className="bg-slate-50/70 border-b border-slate-200 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+
+                    <th className="py-4 px-6 w-20 text-center">
+                      Arena No
+                    </th>
+
+                    <th className="py-4 px-6">
+                      Tapşırığın Adı
+                    </th>
+
+                    <th className="py-4 px-6">
+                      Xal (Points)
+                    </th>
+
+                    <th className="py-4 px-6 w-32 text-center">
+                      Sınaq Testləri
+                    </th>
+
+                    <th className="py-4 px-6 w-24 text-center">
+                      Əməliyyat
+                    </th>
+
                   </tr>
-                ))}
-              </tbody>
-            </table>
+
+                </thead>
+
+
+
+                <tbody className="divide-y divide-slate-100 text-xs font-bold text-slate-700">
+
+                  {tasks.map((task) => (
+
+                    <tr
+                      key={task._id}
+                      className="hover:bg-slate-50/50 transition-all"
+                    >
+
+
+                      <td className="py-4 px-6 text-center font-black text-slate-900 bg-slate-50/30 w-20 border-r border-slate-100">
+                        #{task.order}
+                      </td>
+
+
+
+                      <td className="py-4 px-6 font-black text-sm text-slate-900 max-w-xs truncate">
+                        {task.title}
+                      </td>
+
+
+
+                      <td className="py-4 px-6 text-slate-600">
+
+                        <span className="bg-amber-50 text-amber-700 border border-amber-100 px-2.5 py-0.5 rounded-full text-[10px] font-black">
+                          +{task.points} XP
+                        </span>
+
+                      </td>
+
+
+
+                      <td className="py-4 px-6 text-center">
+
+                        <span className="inline-flex items-center bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded-md text-[11px] font-black font-mono">
+
+                          {task.testCases?.length || 0} Cases
+
+                        </span>
+
+                      </td>
+
+
+
+                      <td className="py-4 px-6 text-center">
+
+                        <button
+                          onClick={() => handleOpenEditModal(task)}
+                          className="bg-slate-100 hover:bg-sky-50 text-slate-600 hover:text-sky-700 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-sky-200 transition-all shadow-sm uppercase tracking-wide text-[10px] font-black"
+                        >
+                          Redaktə
+                        </button>
+
+                      </td>
+
+
+                    </tr>
+
+                  ))}
+
+                </tbody>
+
+
+              </table>
+
+            </div>
+
           )}
+
         </div>
+
 
       </div>
 
