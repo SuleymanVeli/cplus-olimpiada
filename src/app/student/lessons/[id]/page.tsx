@@ -118,6 +118,7 @@ export default function InteractiveLessonPage() {
         title: 'C++ Proqramının Əsas Strukturu və `cout`',
         videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
         order: 3,
+        level:1,
         content: `
           <h3>🚀 C++ Dünyasına Xoş Gəldiniz!</h3>
           <p>Hər bir C++ proqramı xüsusi bir ana şablondan başlayır. Kompüter kodu yuxarıdan aşağıya doğru oxuyur və icra edir.</p>
