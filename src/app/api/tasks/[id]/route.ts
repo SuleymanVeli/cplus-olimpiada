@@ -27,7 +27,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const associatedModule = task.moduleId as any;
 
-    const level = associatedModule.level || 1;;
+    const level = associatedModule.level || 1;
 
     // 2. Şagirdin tərəqqisini yoxlayırıq ki, bu tapşırığa giriş icazəsi var ya yox
     const progress = await UserProgress.findOne({ userId: mockUserId, level: level }).lean();
@@ -38,52 +38,47 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         { status: 404 }
       );
     }
-    
+
 
     // 3. Təhlükəsizlik Yoxlanışı (Security Check): 
     // Şagird hələ bu modulun kilidini açmayıbsa və ya modul aktivdirsə amma bu taskın sırası gəlməyibsə, datanı vermirik.
-    const isModuleCompleted = progress.completedModules.includes(associatedModule._id.toString());
-    const isModuleActive = progress.currentModuleId.toString() === associatedModule._id.toString();
-    
-    if (!isModuleCompleted && !isModuleActive) {
-      return NextResponse.json(
-        { success: false, message: "Bu tapşırıq sizin üçün hələ kilidlidir!" },
-        { status: 403 }
-      );
-    }
 
-    if (isModuleActive && task.order > progress.currentTaskOrder) {
-       return NextResponse.json(
-         { success: false, message: "Öncəki tapşırıqları həll etməlisiniz!" },
-         { status: 403 }
-       );
-    }
+    const compTasks = progress.completedTasks.map((id: any) => id.toString());
 
-    // 4. Əgər hər şey qaydasındadırsa, həm taskı, həm də dərs kontentini qaytarırıq
-    return NextResponse.json({
-      success: true,
-      data: {
-        task: {
-          _id: task._id,
-          title: task.title,
-          description: task.description,
-          inputFormat: task.inputFormat,
-          outputFormat: task.outputFormat,
-          constraints: task.constraints,
-          points: task.points,
-          order: task.order,
-          testCases: task.testCases, // Test case-ləri də göndəririk ki, şagird özündə yoxlaya bilsin
-          status: progress.completedTasks.includes(task._id.toString()) ? 'completed' : 'active',
-          level: associatedModule.level
-        },
-        module: {
-          _id: associatedModule._id,
-          title: associatedModule.title,
-          videoUrl: associatedModule.videoUrl,
-          content: associatedModule.content // Markdown formatlı dərs mətni
+    const isTaskCompleted = compTasks.includes(taskId);
+    const isCurrentModule = progress.currentModuleId.toString() === associatedModule._id.toString();
+    const isCurrentTask = task.order == progress.currentTaskOrder;
+
+    if (isCurrentModule && isCurrentTask || isTaskCompleted)
+      return NextResponse.json({
+        success: true,
+        data: {
+          task: {
+            _id: task._id,
+            title: task.title,
+            description: task.description,
+            inputFormat: task.inputFormat,
+            outputFormat: task.outputFormat,
+            constraints: task.constraints,
+            points: task.points,
+            order: task.order,
+            testCases: task.testCases, // Test case-ləri də göndəririk ki, şagird özündə yoxlaya bilsin
+            status: progress.completedTasks.includes(task._id.toString()) ? 'completed' : 'active',
+            level: associatedModule.level
+          },
+          module: {
+            _id: associatedModule._id,
+            title: associatedModule.title,
+            videoUrl: associatedModule.videoUrl,
+            content: associatedModule.content // Markdown formatlı dərs mətni
+          }
         }
-      }
-    }, { status: 200 });
+      }, { status: 200 });
+
+    return NextResponse.json(
+      { success: false, message: "Bu tapşırıq sizin üçün hələ kilidlidir!" },
+      { status: 403 }
+    );
 
   } catch (error: any) {
     console.error("Task GET API Error:", error);

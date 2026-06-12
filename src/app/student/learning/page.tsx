@@ -12,6 +12,7 @@ interface TaskNode {
   points: number;
   status: 'completed' | 'active' | 'locked';
   moduleTitle: string;
+  new: boolean;
 }
 
 const animalsData = [
@@ -101,7 +102,7 @@ export default function GamingPath() {
     }
 
     function generateMockFallback() {
-      const mock: TaskNode[] = Array.from({ length: 15 }, (_, i) => {
+      const mock:any = Array.from({ length: 15 }, (_, i) => {
         const isLesson = i % 5 === 0;
         return {
           _id: `mock_${i}`,
@@ -116,8 +117,8 @@ export default function GamingPath() {
       setNodes(mock);
       setCurrentActiveIndex(3);
     }
-     
-    if(userData?._id) {
+
+    if (userData?._id) {
       fetchMapData();
     }
   }, [userData]);
@@ -353,6 +354,42 @@ export default function GamingPath() {
           else ctx.fillStyle = '#bcc4c7';
           ctx.fill();
 
+          if (nodes[i].new === true) {
+
+            const blink = Math.abs(Math.sin(animationFrame * 1));
+
+            ctx.save();
+
+            ctx.globalAlpha = 0.5 + blink * 0.5;
+
+            // balaca bubble
+            ctx.beginPath();
+            ctx.roundRect(
+              x - 25,
+              y + floatOffset - 65,
+              50,
+              22,
+              10
+            );
+
+            ctx.fillStyle = '#ff6b6b';
+            ctx.fill();
+
+
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            ctx.fillText(
+              '✨ Yeni',
+              x,
+              y + floatOffset - 54
+            );
+
+            ctx.restore();
+          }
+
           if (nodeState === 'active') {
             ctx.beginPath(); ctx.ellipse(x, y + floatOffset, rx * 0.8, ry * 0.8, 0, 0, Math.PI * 2); ctx.fillStyle = '#ffffff'; ctx.fill();
             ctx.beginPath(); ctx.ellipse(x, y + floatOffset, rx * 0.68, ry * 0.68, 0, 0, Math.PI * 2); ctx.fillStyle = '#ffe066'; ctx.fill();
@@ -550,10 +587,10 @@ export default function GamingPath() {
   }
 
   return (
-    <div className="flex justify-center bg-[#bfe3f0] min-h-screen overflow-hidden font-sans select-none">
+    <div className="flex justify-center bg-[#bfe3f0] min-h-screen overflow-hidden font-sans ">
       <div className="relative shadow-[0_0_80px_rgba(0,0,0,0.2)] bg-[#58cc02]">
 
-         {/* Dashboarda geri donme, shadow olsun */}
+        {/* Dashboarda geri donme, shadow olsun */}
         <button
           onClick={() => navigateTo('/student/dashboard')}
           className="absolute top-5 left-5 bg-white px-8 py-3.5 hover:translate-y-[-2px] cursor-pointer rounded-full border-b-[5px] border-slate-200 z-10 whitespace-nowrap text-slate-700 font-black text-sm md:text-base shadow-lg tracking-wide"

@@ -427,7 +427,7 @@ export default function RealCompilerArena({ params }: { params: Promise<{ id: st
             >
 
               <div
-                className="text-xs md:text-sm text-emerald-800 font-medium leading-relaxed [&_strong]:bg-emerald-200 [&_strong]:px-1.5 [&_strong]:rounded-md [&_strong]:text-emerald-950 [&_code]:bg-emerald-900 [&_code]:text-emerald-100 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded font-mono"
+                className="text-xs md:text-sm select-text text-emerald-800 font-medium leading-relaxed [&_strong]:bg-emerald-200 [&_strong]:px-1.5 [&_strong]:rounded-md [&_strong]:text-emerald-950 [&_code]:bg-emerald-900 [&_code]:text-emerald-100 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded font-mono"
                 dangerouslySetInnerHTML={{ __html: gameData.instructionText }}
               />
             </div>

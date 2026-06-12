@@ -44,19 +44,27 @@ export async function GET(req: NextRequest) {
 
     // String massivlərinə çeviririk ki, .includes() rahat işləsin
     const compTasks = progress.completedTasks.map((id: any) => id.toString());
+    const compLessons = progress.completedLessons.map((id: any) => id.toString());
     const compModules = progress.completedModules.map((id: any) => id.toString());
     const currentModIdStr = progress.currentModuleId.toString();
 
+    const currentModule = await Module.findById(currentModIdStr);
+
     modules.forEach((mod: any) => {
-      const isModuleActive = currentModIdStr === mod._id.toString();
+      const isCurrentModul = currentModIdStr === mod._id.toString();
       const isModuleCompleted = compModules.includes(mod._id.toString());
+
+      const isModuleOld = mod.order <  currentModule.order;
 
       // A) DƏRS (LESSON) NODE
       let lessonStatus: 'completed' | 'active' | 'locked' = 'locked';
-      if (isModuleCompleted) {
+
+      const isLessonCompleted = compLessons.includes(mod._id.toString())
+
+      if (isLessonCompleted) {
         lessonStatus = 'completed';
-      } else if (isModuleActive) {
-        lessonStatus = progress.currentTaskOrder === 0 ? 'active' : 'completed';
+      } else if (isCurrentModul && progress.currentTaskOrder === 0) {
+        lessonStatus = 'active';
       }
 
       flatNodes.push({
@@ -65,7 +73,8 @@ export async function GET(req: NextRequest) {
         title: `${mod.title} (Mühazirə)`,
         moduleTitle: mod.title,
         status: lessonStatus,
-        points: 0
+        points: 0,
+        new: ((isModuleCompleted && !isLessonCompleted) || (isModuleOld && !isLessonCompleted))
       });
 
       // B) TAPŞIRIQLAR (TASK) NODES
@@ -79,9 +88,9 @@ export async function GET(req: NextRequest) {
 
           let taskStatus: 'completed' | 'active' | 'locked' = 'locked';
 
-          if (isTaskCompleted || isModuleCompleted) {
+          if (isTaskCompleted) {
             taskStatus = 'completed';
-          } else if (isModuleActive && taskOrder === progress.currentTaskOrder) {
+          } else if (isCurrentModul && taskOrder === progress.currentTaskOrder) {
             taskStatus = 'active';
           }
 
@@ -91,7 +100,8 @@ export async function GET(req: NextRequest) {
             title: task.title,
             moduleTitle: mod.title,
             status: taskStatus,
-            points: task.points
+            points: task.points,
+            new: ((isModuleCompleted && !isTaskCompleted) || (isModuleOld && !isTaskCompleted) )
           });
         });
       }

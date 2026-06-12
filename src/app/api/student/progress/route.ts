@@ -5,52 +5,175 @@ import Task from '@/src/models/Task';
 import Module from '@/src/models/Module';
 import mongoose from 'mongoose';
 
+
+// İstifadəçinin növbəti hara getməli olduğunu tapır
+async function calculateNextProgress(
+  progress: any,
+  level: string
+) {
+  const modules = await Module.find({ level })
+    .sort({ order: 1 });
+
+  const completedLessons = progress.completedLessons.map(
+    (id: any) => id.toString()
+  );
+
+  const completedTasks = progress.completedTasks.map(
+    (id: any) => id.toString()
+  );
+
+  for (const module of modules) {
+
+    // Lesson bitməyibsə əvvəl lesson açılır
+    if (!completedLessons.includes(module._id.toString())) {
+      return {
+        moduleId: module._id,
+        taskOrder: 0
+      };
+    }
+
+    // Modulun tasklarını tap
+    const tasks = await Task.find({
+      moduleId: module._id
+    })
+      .sort({ order: 1 });
+
+    // Bitməmiş task tap
+    const unfinishedTask = tasks.find(
+      task =>
+        !completedTasks.includes(
+          task._id.toString()
+        )
+    );
+
+    if (unfinishedTask) {
+      return {
+        moduleId: module._id,
+        taskOrder: unfinishedTask.order
+      };
+    }
+  }
+
+  // hər şey tamamdır
+  return {
+    moduleId: null,
+    taskOrder: 999
+  };
+}
+
 export async function POST(request: Request) {
+
   await dbConnect();
 
   try {
-    const { userId, type, id, code, level } = await request.json(); // type: 'lesson' veya 'task'
 
-    console.log("Gelen veri:", { userId, type, id, code, level });
+    const {
+      userId,
+      type,
+      id,
+      code,
+      level
+    } = await request.json();
 
-    const userObjectId = new mongoose.Types.ObjectId(userId);
+    console.log(
+      "Gələn data:",
+      {
+        userId,
+        type,
+        id,
+        code,
+        level
+      }
+    );
 
-    let progress = await UserProgress.findOne({ userId :userObjectId, level: level }); 
-    if (!progress) {     
-      return NextResponse.json({ success: false, message: "İstifadəçi irəliləyişi tapılmadı." }, { status: 404 });
+    const userObjectId =
+      new mongoose.Types.ObjectId(userId);
+
+    let progress =
+      await UserProgress.findOne({
+        userId: userObjectId,
+        level: level
+      });
+
+    if (!progress) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "İstifadəçi irəliləyişi tapılmadı."
+        },
+        {
+          status: 404
+        }
+      );
     }
 
-    // --- SENARİ A: MÜHAZİRƏNİ BİTİRDİ ---
-    if (type === 'lesson') {
+    // =========================
+    // LESSON TAMAMLANDI
+    // =========================
+
+    if (type === "lesson") {
+
       const moduleId = id;
-      
-      if (!progress?.completedLessons?.includes(moduleId)) {
-        progress.completedLessons.push(moduleId);
-      }
+      const exists =
+        progress.completedLessons.some(
+          (x: any) =>
+            x.toString() === moduleId.toString()
+        );
 
-      // Əgər şagird cari modulun mühazirəsində idisə, onu 1-ci taska keçiririk
-      if (progress?.currentModuleId?.toString() === moduleId && progress?.currentTaskOrder === 0) {
-        progress.currentTaskOrder = 1;
-      }
-    } 
-    
-    // --- SENARİ B: ARENADA TASKI HƏLL ETDİ ---
-    else if (type === 'task') {
+      if (!exists) {
+        progress.completedLessons.push(
+          moduleId
+        );
+      }      
+    }
+
+    // =========================
+    // TASK TAMAMLANDI
+    // =========================
+
+    else if (type === "task") {
       const taskId = id;
-      const task = await Task.findById(taskId);
-      if (!task) return NextResponse.json({ success: false, message: "Task tapılmadı." }, { status: 404 });
-
-      // 1. Taskı tamamlananlara əlavə et (əgər yoxdursa)
-      if (!progress?.completedTasks?.includes(taskId)) {
-        progress.completedTasks.push(taskId);
+      const task =
+        await Task.findById(taskId);
+      if (!task) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Task tapılmadı."
+          },
+          {
+            status: 404
+          }
+        );
       }
 
-      // 2. SolvedTasks tarixinə qeyd et və ya kodu yenilə
-      const alreadySolvedIndex = progress?.solvedTasks?.findIndex((t: any) => t.taskId.toString() === taskId);
-      if (alreadySolvedIndex !== -1) {
-        progress.solvedTasks[alreadySolvedIndex].submittedCode = code;
-      } else {
+      const alreadyCompleted =
+        progress.completedTasks.some(
+          (x: any) =>
+            x.toString()
+            === taskId.toString()
+        );
+
+      if (!alreadyCompleted) {
+        progress.completedTasks.push(
+          taskId
+        );
         progress.totalXp += task.points;
+      }
+
+      const solvedIndex =
+        progress.solvedTasks.findIndex(
+          (t: any) =>
+            t.taskId.toString()
+            === taskId.toString()
+        );
+
+      if (solvedIndex !== -1) {
+        progress.solvedTasks[
+          solvedIndex
+        ].submittedCode = code;
+      }
+      else {
         progress.solvedTasks.push({
           taskId: task._id,
           submittedCode: code,
@@ -58,40 +181,92 @@ export async function POST(request: Request) {
           solvedAt: new Date()
         });
       }
+    }
 
-      // 3. XƏRİTƏDƏ NÖVBƏTİ ADXIMA KEÇİD MƏNTİQİ
-      if (progress.currentModuleId.toString() === task.moduleId.toString() && task.order === progress.currentTaskOrder) {
-        
-        // Cari modulun bütün tasklarını tapırıq
-        const currentModuleTasks = await Task.find({ moduleId: task.moduleId }).sort({ order: 1 });
-        
-        if (progress.currentTaskOrder < currentModuleTasks.length) {
-          // Modul daxilində növbəti task var
-          progress.currentTaskOrder += 1;
-        } else {
-          // 🚀 MODULUN BÜTÜN TASKLARI BİTDİ! Növbəti modula keçid:
-          if (!progress.completedModules.includes(task.moduleId)) {
-            progress.completedModules.push(task.moduleId);
-          }
+    // =========================
+    // BURADA YENİ AĞILLI SİSTEM
+    // =========================
 
-          const nextModule = await Module.findOne({ order: { $gt: (await Module.findById(task.moduleId)).order }, level: level }).sort({ order: 1 });
-          
-          if (nextModule) {
-            progress.currentModuleId = nextModule._id;
-            progress.currentTaskOrder = 0; // Yeni modulun dərsi açılır
-          } else {
-            // Oyun tam bitdi, daha modul yoxdur
-            progress.currentTaskOrder = 999; 
+    const next =
+      await calculateNextProgress(
+        progress,
+        level
+      );
+
+    progress.currentModuleId =
+      next.moduleId;
+
+    progress.currentTaskOrder =
+      next.taskOrder;
+
+    // modul tamamlanan kimi qeyd et
+    if (next.moduleId) {
+      const currentModule =
+        await Module.findById(
+          next.moduleId
+        );
+
+      if (currentModule) {
+        const moduleTasks =
+          await Task.find({
+            moduleId: currentModule._id
+          });
+
+        const allDone =
+          moduleTasks.every(
+            t =>
+              progress.completedTasks
+                .some(
+                  (x: any) =>
+                    x.toString()
+                    === t._id.toString()
+                )
+          );
+
+        if (allDone) {
+          const already =
+            progress.completedModules.some(
+              (x: any) =>
+                x.toString()
+                === currentModule._id.toString()
+            );
+
+          if (!already) {
+            progress.completedModules.push(
+              currentModule._id
+            );
           }
         }
       }
     }
 
     await progress.save();
-    return NextResponse.json({ success: true, totalXp: progress.totalXp, currentTaskOrder: progress.currentTaskOrder });
 
-  } catch (error: any) {
+    return NextResponse.json({
+
+      success: true,
+      totalXp:
+        progress.totalXp,
+
+      currentModuleId:
+        progress.currentModuleId,
+
+      currentTaskOrder:
+        progress.currentTaskOrder
+    });
+  }
+
+  catch (error: any) {
     console.error(error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: error.message
+      },
+      {
+        status: 500
+      }
+    );
   }
 }
