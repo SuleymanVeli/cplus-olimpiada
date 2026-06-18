@@ -15,17 +15,14 @@ export interface WandboxResponse {
 }
 
 export async function compileCppCode(code: string, stdin: string = "3"): Promise<WandboxResponse> {
-  const payload: WandboxPayload = {
-    code,
-    compiler: "gcc-head",
-    stdin,
-    options: "warning,gnu++20"
-  };
-
-  const response = await fetch("https://wandbox.org/api/compile.json", {
+ 
+  const response = await fetch("/api/compiler", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
+    body: JSON.stringify({
+      code: code,
+      stdin: stdin || ""
+    })
   });
 
   if (!response.ok) {
