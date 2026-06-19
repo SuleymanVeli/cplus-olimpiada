@@ -20,6 +20,7 @@ interface LevelData {
   xalSistemi?: CavabXal[]; // Terminal xal sistemi
   hasWriteTask: boolean;
   requiredWrites: RequiredWrite[];
+  startDirection: string;
 }
 
 
@@ -107,7 +108,7 @@ ${cppRequiredWritesStr.length > 0 ? cppRequiredWritesStr : "      {-1, -1, \"\",
     struct RobotEngine {
         int x = ${levelData.startX};
         int y = ${levelData.startY};
-        string istiqamet = "RIGHT";
+        string istiqamet = "${levelData.startDirection.toUpperCase()}";
         
         bool finishAciq = !xeritedeTerminalVar; 
         int qazanilanXal = xeritedeTerminalVar ? 0 : MAKSIMUM_BAL; 

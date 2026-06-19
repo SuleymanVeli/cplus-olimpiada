@@ -1231,7 +1231,8 @@ export default function RealCompilerArena() {
       levelPoint: changedData.levelPoint,
       xalSistemi: changedData.xalSistemi,
       requiredWrites: changedData.requiredWrites,
-      hasWriteTask: changedData.hasWriteTask
+      hasWriteTask: changedData.hasWriteTask,
+      startDirection: changedData.startDirection
     });
 
     try {
