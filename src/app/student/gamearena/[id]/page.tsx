@@ -7,6 +7,9 @@ import confetti from 'canvas-confetti';
 import ReactCodeMirror from '@uiw/react-codemirror';
 import { cpp } from '@codemirror/lang-cpp';
 import { generateEngineHeader } from '@/src/utils/gameEngineUtils';
+import { useParams } from 'next/navigation';
+import { transformLevelWithRandomVariant } from '@/src/utils/transformLevelWithRandomVariant';
+import { cloneDeep } from 'lodash';
 
 // 1. Frontend Parser və Animasiya Sistemi Üçün Əmrlər
 interface ExecutionStep {
@@ -38,6 +41,33 @@ interface CavabXal {
   mesaj: string;
 }
 
+interface VariantValue {
+  name: string;  // Məsələn: "$a", "$b", "$cavab"
+  value: string; // Məsələn: "10", "cüt", "150"
+}
+
+interface ScenarioData {
+  values: VariantValue[];
+}
+
+interface OriginalLevelData {
+  title: string;
+  instructionText: string;
+  points: number;            // Səviyyənin ümumi (maksimum) balı
+  startX: number;
+  startY: number;
+  startDirection: 'right' | 'left' | 'up' | 'down';
+  mapLayout: number[][];
+  xanaYazilari: string[][];  // Hüceyrədəki yazılar (İçində "$a", "$b" şablonları ola bilər)
+  xanaTipleri: string[][];   // "int", "string", "double" və ya ""
+  portals?: PortalData[];    // Səviyyədə portal yoxdursa undefined ola bilər
+  xalSistemi?: CavabXal[];   // Dinamik xal matrisi (Terminal varsa aktivləşir)
+  levelPoint: number;
+  hasWriteTask: boolean;
+  requiredWrites: any[];   
+  variants?: ScenarioData[]; 
+}
+
 interface LevelData {
   title: string;
   instructionText: string;
@@ -52,62 +82,9 @@ interface LevelData {
   xalSistemi?: CavabXal[];   // Dinamik xal matrisi (Terminal varsa aktivləşir)
   levelPoint: number;
   hasWriteTask: boolean;
-  requiredWrites: any[];
+  requiredWrites: any[]; 
 
 }
-
-// 2. MOCK DATA: Bütün yeni mühərrik komponentlərini test edən real xəritə (10x5)
-// 0: Boş, 1: Sabit Divar, 2: Qutu, 3: Portal, 4: Terminal, 5: Finiş
-const MOCK_LEVEL_DATA: LevelData = {
-  title: "Sehrli Meşə: Alqoritmik Hesablama və Terminal Testi",
-  instructionText: "Qarşıdakı qutunu itələ, xanadakı <strong>INT</strong> dəyəri oxu, üzərinə 1 addım irəlidəki dəyəri əlavə et, <strong>Terminalda (4)</strong> yaz və <strong>Finişə (5)</strong> keç!",
-  points: 150,
-  startX: 1,
-  startY: 1,
-  startDirection: 'right',
-  levelPoint: 20,
-
-  // Xəritədə artıq Terminal (4) və Finiş (5) mövcuddur
-  mapLayout: [
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 0, 0, 0, 0, 0, 0, 0, 5, 1], // (2,1)-də qutu, (4,1)-də terminal, (8,1)-də finiş
-    [1, 0, 1, 1, 0, 1, 0, 1, 0, 1],
-    [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-  ],
-
-  // Qutunun altındakı xanada (2,1) int 99 var. (3,1) xanasında isə digər int 50 var.
-  xanaYazilari: [
-    ["", "", "", "", "", "", "", "", "", ""],
-    ["", "", "", "", "", "", "", "", "", ""],
-    ["", "", "", "", "", "", "", "", "", ""],
-    ["", "", "", "", "", "", "", "", "", ""],
-    ["", "", "", "", "", "", "", "", "", ""]
-  ],
-
-  xanaTipleri: [
-    ["", "", "", "", "", "", "", "", "", ""],
-    ["", "", "", "", "", "", "", "", "", ""],
-    ["", "", "", "", "", "", "", "", "", ""],
-    ["", "", "", "", "", "", "", "", "", ""],
-    ["", "", "", "", "", "", "", "", "", ""]
-  ],
-
-  // Test üçün dinamik xal sistemi: Şagird fərqli kombinasiyalar yaza bilər
-  xalSistemi: [
-    { cavab: "149", verilecekXal: 150, mesaj: "Mükəmməl! Hər iki ədədi düzgün topladın!" },
-    { cavab: "99", verilecekXal: 90, mesaj: "Yaxşı cəhd, amma növbəti xanadakı ədədi unutmusan!" }
-  ],
-
-  portals: [],
-  hasWriteTask: true,
-  requiredWrites: [
-    { x: 2, y: 1, expected: "1" },
-    { x: 3, y: 1, expected: "2" },
-    { x: 4, y: 1, expected: "3" },
-    { x: 5, y: 1, expected: "4" }
-  ]
-};
 
 const GRID_SIZE = 60;
 const ROBOT_INPUT_NUMBER = "0";
@@ -145,10 +122,15 @@ export default function RealCompilerArena() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const terminalRef = useRef<HTMLDivElement>(null);
 
-  const [data, setData] = useState<LevelData| null>();
+  const params = useParams();
+  const id = params.id;
+
+  const [originalData, setOriginalData] = useState<OriginalLevelData | null>();
+
+  const [data, setData] = useState<LevelData | null>();
 
   // Cari xəritə və yazı vəziyyətini dinamik saxlamaq üçün statelər
-  const [dynamicMap, setDynamicMap] = useState<number[][]>(MOCK_LEVEL_DATA.mapLayout);
+  const [dynamicMap, setDynamicMap] = useState<number[][]>();
   const [code, setCode] = useState(DEFAULT_CPP_CODE);
   const [isRunning, setIsRunning] = useState(false);
   const [isTerminalExpanded, setIsTerminalExpanded] = useState(false);
@@ -159,21 +141,63 @@ export default function RealCompilerArena() {
   const [successSteps, setSuccessSteps] = useState<number[]>([]);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  const [xanaYazilari, setXanaYazilari] = useState<string[][]>(MOCK_LEVEL_DATA.xanaYazilari)
+  const [xanaYazilari, setXanaYazilari] = useState<string[][]>()
 
   const executionStackRef = useRef<ExecutionStep[]>([]);
   const lastCompiledCodeRef = useRef<string>("");
   const abortExecutionRef = useRef<boolean>(false);
 
 
+  useEffect(() => {
+
+    if (!id) return;
+    const fetchLevelData = async () => {
+      try {
+        // API endpoint-inizi bura yazın (məsələn: '/api/level' və ya xarici URL)
+        const response = await fetch(`/api/topics/${id}`);
+        const { data }: { data: OriginalLevelData } = await response.json();
+
+        setOriginalData(data);
+
+        const changedData = transformLevelWithRandomVariant(cloneDeep(data))
+
+        // Data uğurla gəldikdə əlaqədar stateləri yeniləyirik
+        setData(changedData);
+        setDynamicMap(changedData.mapLayout);
+        setXanaYazilari(changedData.xanaYazilari);
+        setTerminalLogs([
+          { type: 'system', text: `// 🌲 ${changedData.title} Aktivdir. C++ simulyasiyası gözlənilir...` }
+        ]);
+
+        // Robotun ilkin vəziyyətini dinamik gələn dataya görə nizamlayırıq
+        robotRef.current.gridX = changedData.startX;
+        robotRef.current.gridY = changedData.startY;
+        robotRef.current.targetX = changedData.startX * GRID_SIZE + GRID_SIZE / 2;
+        robotRef.current.targetY = changedData.startY * GRID_SIZE + GRID_SIZE / 2;
+        robotRef.current.currentX = robotRef.current.targetX;
+        robotRef.current.currentY = robotRef.current.targetY;
+        robotRef.current.angle = robotRef.current.directionAngles[changedData.startDirection];
+        robotRef.current.targetAngle = robotRef.current.directionAngles[changedData.startDirection];
+        robotRef.current.finishOpened = !changedData.mapLayout.some(row => row.includes(4));
+
+
+      } catch (error) {
+        console.error("Data yüklənərkən xəta baş verdi:", error);
+      }
+    };
+
+    fetchLevelData();
+  }, [id]);
+
+
   // Robotun fiziki və vizual obyekti
   const robotRef = useRef({
-    gridX: MOCK_LEVEL_DATA.startX,
-    gridY: MOCK_LEVEL_DATA.startY,
-    targetX: MOCK_LEVEL_DATA.startX * GRID_SIZE + GRID_SIZE / 2,
-    targetY: MOCK_LEVEL_DATA.startY * GRID_SIZE + GRID_SIZE / 2,
-    currentX: MOCK_LEVEL_DATA.startX * GRID_SIZE + GRID_SIZE / 2,
-    currentY: MOCK_LEVEL_DATA.startY * GRID_SIZE + GRID_SIZE / 2,
+    gridX: 0,
+    gridY: 0,
+    targetX: 0,
+    targetY: 0,
+    currentX: 0,
+    currentY: 0,
     angle: 0,
     targetAngle: 0,
     speed: 4,
@@ -182,26 +206,27 @@ export default function RealCompilerArena() {
     isScanning: false,
     isWriting: false,
     isLookingAhead: false,
-    finishOpened: !MOCK_LEVEL_DATA.mapLayout.some(row => row.includes(4)),
+    finishOpened: true,
     currentDataType: "int",
-
     popup: null as { text: string; type: 'write' | 'read'; expiresAt: number } | null,
 
     reset() {
-      this.gridX = MOCK_LEVEL_DATA.startX;
-      this.gridY = MOCK_LEVEL_DATA.startY;
-      this.targetX = MOCK_LEVEL_DATA.startX * GRID_SIZE + GRID_SIZE / 2;
-      this.targetY = MOCK_LEVEL_DATA.startY * GRID_SIZE + GRID_SIZE / 2;
+      if (!data) return; // Data null-dursa reset işləməsin
+      this.gridX = data.startX;
+      this.gridY = data.startY;
+      this.targetX = data.startX * GRID_SIZE + GRID_SIZE / 2;
+      this.targetY = data.startY * GRID_SIZE + GRID_SIZE / 2;
       this.currentX = this.targetX;
       this.currentY = this.targetY;
-      this.angle = this.directionAngles[MOCK_LEVEL_DATA.startDirection];
-      this.targetAngle = this.directionAngles[MOCK_LEVEL_DATA.startDirection];
+      this.angle = this.directionAngles[data.startDirection];
+      this.targetAngle = this.directionAngles[data.startDirection];
       this.isScanning = false;
       this.isWriting = false;
       this.isLookingAhead = false;
-      this.finishOpened = !MOCK_LEVEL_DATA.mapLayout.some(row => row.includes(4));
-      this.currentDataType = "int",
-        setDynamicMap(JSON.parse(JSON.stringify(MOCK_LEVEL_DATA.mapLayout)));
+      this.finishOpened = !data.mapLayout.some(row => row.includes(4));
+      this.currentDataType = "int";
+      setDynamicMap(JSON.parse(JSON.stringify(data.mapLayout)));
+      setXanaYazilari(JSON.parse(JSON.stringify(data.xanaYazilari)));
     },
     update() {
       if (Math.abs(this.targetX - this.currentX) > this.speed) this.currentX += (this.targetX > this.currentX) ? this.speed : -this.speed;
@@ -218,10 +243,13 @@ export default function RealCompilerArena() {
     }
   });
 
-  
+  const cols = data?.mapLayout[0]?.length || 10;
+  const rows = data?.mapLayout?.length || 5;
+
 
   // CANVAS RENDER (Bütün yeni obyektlərin vizual qatı)
   useEffect(() => {
+    if (!data || !dynamicMap || !xanaYazilari) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -238,8 +266,8 @@ export default function RealCompilerArena() {
       const r = robotRef.current;
 
       // Grid və Obyektlərin Çəkilməsi
-      for (let y = 0; y < 5; y++) {
-        for (let x = 0; x < 10; x++) {
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
           const tile = dynamicMap[y][x];
 
           // Zəmin rəngləri
@@ -313,7 +341,7 @@ export default function RealCompilerArena() {
             ctx.restore();
           }
           // 3. PORTALLAR
-          if (tile === 3) {
+          if (tile > 9 && tile < 20) {
             // 1. Portalın mərkəz nöqtəsini hesablayaq
             const centerX = x * GRID_SIZE + GRID_SIZE / 2;
             const centerY = y * GRID_SIZE + GRID_SIZE / 2;
@@ -590,8 +618,8 @@ export default function RealCompilerArena() {
             ctx.restore();
           }
 
-          const writeTask = MOCK_LEVEL_DATA.hasWriteTask
-            ? MOCK_LEVEL_DATA.requiredWrites.find(w => w.x === x && w.y === y)
+          const writeTask = data.hasWriteTask
+            ? data.requiredWrites.find(w => w.x === x && w.y === y)
             : null;
 
           if (writeTask) {
@@ -640,7 +668,6 @@ export default function RealCompilerArena() {
 
             ctx.restore();
           }
-
 
         }
       }
@@ -981,10 +1008,11 @@ export default function RealCompilerArena() {
     };
     render();
     return () => cancelAnimationFrame(animationId);
-  }, [dynamicMap, xanaYazilari, ]);
+  }, [dynamicMap, xanaYazilari, data]);
 
   // ANİMASİYA VE HƏRƏKƏT SİNYALLARININ İCRA OLUNMASI
   const startRobotMovement = async (steps: ExecutionStep[]) => {
+    if(!data) return;
     setIsRunning(true);
     setSuccessSteps([]);
     abortExecutionRef.current = false;
@@ -992,7 +1020,7 @@ export default function RealCompilerArena() {
     if (!r) return;
 
     // Local xəritə kopyası (Animasiya zamanı qutuların yerini vizual sürüşdürmək üçün)
-    let currentMapState = JSON.parse(JSON.stringify(dynamicMap));
+    let currentMapState = cloneDeep(dynamicMap);
 
     for (let i = 0; i < steps.length; i++) {
       if (abortExecutionRef.current) break;
@@ -1039,18 +1067,51 @@ export default function RealCompilerArena() {
         r.targetAngle += Math.PI / 2;
       }
 
-      else if (stepData.cmd === 'portal_jump') {
-        const levelPortals = MOCK_LEVEL_DATA.portals || [];
-        if (levelPortals.length > 0) {
-          const portal = levelPortals[0];
-          if (r.gridX === portal.x1 && r.gridY === portal.y1) {
-            r.gridX = portal.x2; r.gridY = portal.y2;
-          } else if (r.gridX === portal.x2 && r.gridY === portal.y2) {
-            r.gridX = portal.x1; r.gridY = portal.y1;
+      else if (stepData.cmd.startsWith('portal_jump')) {
+        // 🌀 Log formatı: "portal_jump|10->11"
+        // stepData.cmd daxilində tam sətir və ya əlavə bir stepData.value ilə ötürdüyünüzü fərz edərək parslayırıq:
+
+        const logParts = stepData.cmd.split('|');
+        console.log("dsvdv",logParts)
+        let targetPortalID = 11; // Default fallback
+
+        if (logParts.length > 1) {
+          const route = logParts[1].split('->'); // ["10", "11"]
+          if (route.length > 1) {
+            targetPortalID = parseInt(route[1], 10); // Bizə lazım olan hədəf portal: 11
           }
+        }
+
+        // 🗺️ Xəritə matrisində (mapLayout) bu hədəf portalın koordinatlarını axtarırıq
+        let foundX = -1;
+        let foundY = -1;
+        const layout = data.mapLayout; // Sizin mövcud level data matrisi
+
+        for (let y = 0; y < layout.length; y++) {
+          for (let x = 0; x < layout[y].length; x++) {
+            if (layout[y][x] === targetPortalID) {
+              foundX = x;
+              foundY = y;
+              break;
+            }
+          }
+          if (foundX !== -1) break;
+        }
+
+        // Sıçrayış koordinatları tapıldısa, robotu anında oraya teleport edirik
+        if (foundX !== -1 && foundY !== -1) {
+          r.gridX = foundX;
+          r.gridY = foundY;
+
+          // Canvas hədəf koordinatlarını set edirik
           r.targetX = r.gridX * GRID_SIZE + GRID_SIZE / 2;
           r.targetY = r.gridY * GRID_SIZE + GRID_SIZE / 2;
-          r.currentX = r.targetX; r.currentY = r.targetY; // Sıçrayış anidir (sub-pixel interpolasiyası olmasın)
+
+          // Animasiya interpolasiyasında sürüşmə (glitch) olmasın deyə cari koordinatları da anında bərabərləşdiririk
+          r.currentX = r.targetX;
+          r.currentY = r.targetY;
+
+          // ✨ İstəsən bura şirin bir portal hissəcik (particle) effekti və ya popup mesajı da tetikleye bilərsən
         }
       }
 
@@ -1114,16 +1175,16 @@ export default function RealCompilerArena() {
 
     // 🏁 MƏRHƏLƏNİN BİTMƏSİNİN YOXLANILMASI
     if (!abortExecutionRef.current) {
-      const targetTileType = MOCK_LEVEL_DATA.mapLayout[r.gridY]?.[r.gridX];
+      const targetTileType = data.mapLayout[r.gridY]?.[r.gridX];
 
       if (targetTileType === 5) { // Robot FINISH xanasındadır
 
         // 🎯 Yazı tapşırığının doğruluğunu yoxlayırıq
         let taskSuccess = true;
 
-        if (MOCK_LEVEL_DATA.hasWriteTask) {
+        if (data.hasWriteTask) {
           // Hər bir hədəf xananı şagirdin yazdıqları ilə müqayisə edirik
-          for (const task of MOCK_LEVEL_DATA.requiredWrites) {
+          for (const task of data.requiredWrites) {
             const studentValue = xanaYazilari[task.y]?.[task.x];
             if (studentValue !== task.expected) {
               taskSuccess = false;
@@ -1133,7 +1194,7 @@ export default function RealCompilerArena() {
         }
 
         if (taskSuccess) {
-          setTerminalLogs(prev => [...prev, { type: 'success', text: `🏆 [MİSSİYA UĞURLU!] Bütün xanalar düzgün proqramlaşdırıldı! (+${MOCK_LEVEL_DATA.points} Xal)` }]);
+          setTerminalLogs(prev => [...prev, { type: 'success', text: `🏆 [MİSSİYA UĞURLU!] Bütün xanalar düzgün proqramlaşdırıldı! (+${data.points} Xal)` }]);
           if (typeof confetti === 'function') confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
           setShowSuccessModal(true);
         } else {
@@ -1150,27 +1211,27 @@ export default function RealCompilerArena() {
 
   // KOMPİLYASİYA FUNKSİYASI (Dinamik C++ Kitabxanası bura qoşulur)
   const handleCompileAndRun = async () => {
+    if(!data || !xanaYazilari) return;
     setIsTerminalExpanded(true); // Terminal panelini vizual olaraq açırıq
     setIsRunning(true);
     abortExecutionRef.current = false;
     setTerminalLogs([{ type: 'system', text: '⚡ Sehrli Meşə mühərriki başladılır...' }]);
 
-    // 1. Portalları dinamik olaraq MOCK_LEVEL_DATA-dan çəkirik (Hardcode silindi!)
-    const p1 = MOCK_LEVEL_DATA.portals && MOCK_LEVEL_DATA.portals[0];
+    const changedData = transformLevelWithRandomVariant(cloneDeep(originalData))
+
+    setData(changedData)
+    setXanaYazilari(changedData.xanaYazilari)
+  
     const engineHeader = generateEngineHeader({
-      mapLayout: MOCK_LEVEL_DATA.mapLayout,
-      xanaYazilari: xanaYazilari,
-      xanaTipleri: MOCK_LEVEL_DATA.xanaTipleri, // Yeni tip qatını da C++ mühərrikinə ötürürük
-      portal1_x: p1 ? p1.x1 : -1,
-      portal1_y: p1 ? p1.y1 : -1,
-      portal2_x: p1 ? p1.x2 : -1,
-      portal2_y: p1 ? p1.y2 : -1,
-      startX: MOCK_LEVEL_DATA.startX,
-      startY: MOCK_LEVEL_DATA.startY,
-      levelPoint: MOCK_LEVEL_DATA.levelPoint,
-      xalSistemi: MOCK_LEVEL_DATA.xalSistemi,
-      requiredWrites: MOCK_LEVEL_DATA.requiredWrites,
-      hasWriteTask: MOCK_LEVEL_DATA.hasWriteTask
+      mapLayout: changedData.mapLayout,
+      xanaYazilari: changedData.xanaYazilari,
+      xanaTipleri: changedData.xanaTipleri,
+      startX: changedData.startX,
+      startY: changedData.startY,
+      levelPoint: changedData.levelPoint,
+      xalSistemi: changedData.xalSistemi,
+      requiredWrites: changedData.requiredWrites,
+      hasWriteTask: changedData.hasWriteTask
     });
 
     try {
@@ -1217,8 +1278,20 @@ export default function RealCompilerArena() {
           parsedSteps.push({ cmd: 'right', raw: 'robot.saga()' });
         } else if (line === "ANIMATION: qutu_itele") {
           parsedSteps.push({ cmd: 'push_box', raw: '📦 Qutu itələnir' });
-        } else if (line === "ANIMATION: portal_jump") {
-          parsedSteps.push({ cmd: 'portal_jump', raw: '⚡ Portal keçidi!' });
+        } // 🌀 Tam sətir bərabərliyi (===) əvəzinə startsWith istifadə edirik
+        else if (line.startsWith("ANIMATION: portal_jump")) {
+          // Sətiri parçalayırıq. line formatı: "ANIMATION: portal_jump|10->11"
+          const parts = line.split('|');
+          if (parts.length > 1) {
+            const route = parts[1]; // "10->11"
+            parsedSteps.push({
+              cmd: `portal_jump|${route}`, // "portal_jump|10->11" olaraq push edilir
+              raw: `⚡ Portal keçidi! (${route})`
+            });
+          } else {
+            // Fallback: Əgər köhnə səviyyələrdən parametr gəlməzsə
+            parsedSteps.push({ cmd: 'portal_jump', raw: '⚡ Portal keçidi!' });
+          }
         } else if (line === "ANIMATION: terminala_yaz") {
           // Interfeyslə tam sinxron hala gətirildi ('terminal_write')
           parsedSteps.push({ cmd: 'terminal_write', raw: '💾 Terminala məlumat yazılır...' });
@@ -1267,13 +1340,22 @@ export default function RealCompilerArena() {
   };
 
   const handleReset = () => {
+    if(!data) return;
     handleStopExecution();
     robotRef.current.reset();
     setSuccessSteps([]);
     setIsTerminalExpanded(false);
     setTerminalLogs([{ type: 'system', text: '// Xəritə sıfırlandı. Yeni həll kodunu yaza bilərsiniz.' }]);
-    setXanaYazilari(MOCK_LEVEL_DATA.xanaYazilari)
+    setXanaYazilari(data.xanaYazilari)
   };
+
+  if (!data) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-900 text-white font-bold text-lg animate-pulse">
+        🚀 Səviyyə məlumatları yüklənir, zəhmət olmasa gözləyin...
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen w-screen bg-gradient-to-b from-sky-100 via-emerald-50 to-green-50 flex flex-col p-6 font-sans antialiased select-none overflow-hidden">
@@ -1281,8 +1363,8 @@ export default function RealCompilerArena() {
       {/* BAŞLIQ PANELİ */}
       <div className="flex justify-between items-center bg-white p-4 rounded-[24px] border-4 border-white shadow-[0_4px_0_#e2e8f0] mb-4 shrink-0">
         <div>
-          <h1 className="font-black text-emerald-950 tracking-tight text-lg md:text-xl leading-tight">{MOCK_LEVEL_DATA.title}</h1>
-          <div className="mt-1 text-xs md:text-sm text-emerald-800" dangerouslySetInnerHTML={{ __html: MOCK_LEVEL_DATA.instructionText }} />
+          <h1 className="font-black text-emerald-950 tracking-tight text-lg md:text-xl leading-tight">{data.title}</h1>
+          <div className="mt-1 text-xs md:text-sm text-emerald-800" dangerouslySetInnerHTML={{ __html: data.instructionText }} />
         </div>
         <div className="bg-emerald-500 text-white font-black px-4 py-2 rounded-xl text-xs uppercase shrink-0">YENİ MÜHƏRRİK (MOCK)</div>
       </div>
@@ -1292,7 +1374,7 @@ export default function RealCompilerArena() {
 
         {/* CANVAS: OYUN SAHƏSİ */}
         <div className="flex-[1.4] bg-white p-4 rounded-[28px] border-4 border-white shadow-[0_6px_0_#e2e8f0] flex items-center justify-center overflow-auto">
-          <canvas ref={canvasRef} width={600} height={300} className="bg-emerald-50/30 rounded-xl block border-2 border-dashed border-emerald-200" />
+          <canvas ref={canvasRef} width={cols * GRID_SIZE} height={rows * GRID_SIZE} className="bg-emerald-50/30 rounded-xl block border-2 border-dashed border-emerald-200" />
         </div>
 
         {/* REDAKTOR VƏ TERMİNAL PANELİ */}

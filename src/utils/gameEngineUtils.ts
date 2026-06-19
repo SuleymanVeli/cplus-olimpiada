@@ -1,10 +1,3 @@
-interface PortalData {
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
-}
-
 interface CavabXal {
   cavab: string; // Strukturda hər şeyi string saxlayırıq ki, həm "45", həm "MagiForest" tutulsun
   verilecekXal: number;
@@ -17,17 +10,13 @@ interface RequiredWrite {
   expected: string;
 }
 
-interface LevelData {
-  title: string;
-  instructionText: string;
+interface LevelData { 
   levelPoint: number;
   startX: number;
   startY: number;
-  startDirection: 'right' | 'left' | 'up' | 'down';
   mapLayout: number[][];
   xanaYazilari: string[][];
-  xanaTipleri: string[][];
-  portals?: PortalData[];  // Portalları təhlükəsiz massiv formatına saldıq
+  xanaTipleri: string[][]; // Portalları təhlükəsiz massiv formatına saldıq
   xalSistemi?: CavabXal[]; // Terminal xal sistemi
   hasWriteTask: boolean;
   requiredWrites: RequiredWrite[];
@@ -63,12 +52,6 @@ export const generateEngineHeader = (levelData: LevelData): string => {
   const writesArray = levelData.requiredWrites || [];
   const writesLength = writesArray.length;
   const cppRequiredWritesStr = writesLength > 0 ? requiredWritesToCpp(writesArray) : "";
-
-  const hasPortals = levelData.portals && levelData.portals.length > 0;
-  const p1_x = hasPortals ? levelData.portals![0].x1 : -1;
-  const p1_y = hasPortals ? levelData.portals![0].y1 : -1;
-  const p2_x = hasPortals ? levelData.portals![0].x2 : -1;
-  const p2_y = hasPortals ? levelData.portals![0].y2 : -1;
 
   const hasTerminal = levelData.mapLayout.some(row => row.includes(4));
 
@@ -119,8 +102,6 @@ ${cppXalSistemiStr.length > 0 ? cppXalSistemiStr : "      {\"\", 0, \"\"}"}
 ${cppRequiredWritesStr.length > 0 ? cppRequiredWritesStr : "      {-1, -1, \"\", false}"}
     };
 
-    int portal1_x = ${p1_x}, portal1_y = ${p1_y};
-    int portal2_x = ${p2_x}, portal2_y = ${p2_y};
     bool xeritedeTerminalVar = ${hasTerminal ? "true" : "false"};
 
     struct RobotEngine {
@@ -198,13 +179,24 @@ ${cppRequiredWritesStr.length > 0 ? cppRequiredWritesStr : "      {-1, -1, \"\",
             y = nextY;
             cout << "ireli" << endl;
 
-            if (xerite[y][x] == 3 && portal1_x != -1) {
-                if (x == portal1_x && y == portal1_y) {
-                    x = portal2_x; y = portal2_y;
-                    cout << "ANIMATION: portal_jump" << endl;
-                } else if (x == portal2_x && y == portal2_y) {
-                    x = portal1_x; y = portal1_y;
-                    cout << "ANIMATION: portal_jump" << endl;
+            int cariXana = xerite[y][x];
+            if (cariXana >= 10 && cariXana <= 19) {
+                // Əgər cütdürsə (+1) hədəfidir (10->11), təkdirsə (-1) hədəfidir (11->10)
+                int hedefPortalID = (cariXana % 2 == 0) ? (cariXana + 1) : (cariXana - 1);
+                
+                bool portalTapildi = false;
+                // Bütün xəritəni skan edib qarşı portallı tapırıq
+                for (int h = 0; h < MAP_HEIGHT; h++) {
+                    for (int w = 0; w < MAP_WIDTH; w++) {
+                        if (xerite[h][w] == hedefPortalID) {
+                            x = w;
+                            y = h;
+                            portalTapildi = true;
+                            cout << "ANIMATION: portal_jump|" << cariXana << "->" << hedefPortalID << endl;
+                            break;
+                        }
+                    }
+                    if (portalTapildi) break;
                 }
             }
 

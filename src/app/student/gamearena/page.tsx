@@ -30,8 +30,8 @@ export default function GamesGrid() {
 
   useEffect(() => {
     if (!userData?._id) return;
-    
-    fetch(`/api/games?userId=${userData?._id}`)
+
+    fetch(`/api/topics?userId=${userData?._id}`)
       .then(res => res.json())
       .then(data => setGames(data.games))
       .finally(() => endTransition());
@@ -39,31 +39,31 @@ export default function GamesGrid() {
 
   return (
     <div className="min-h-screen bg-emerald-950">
-      
+
       {/* 1. HERO BANNER - Tam ekran */}
-      <motion.div 
-        initial={{ opacity: 0 }} 
+      <motion.div
+        initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         className="relative h-screen w-full flex flex-col items-center justify-center p-8 overflow-hidden"
       >
-        <Image 
-          src="/banners/game.png" 
-          alt="Macəra" 
-          fill 
+        <Image
+          src="/banners/game.png"
+          alt="Macəra"
+          fill
           priority
-          className="object-cover opacity-50" 
+          className="object-cover opacity-50"
         />
-        
+
         {/* Qayıt düyməsi */}
-        <button 
+        <button
           onClick={() => navigateTo('/student/dashboard')}
           className="absolute top-8 left-8 z-30 flex items-center gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white font-bold px-6 py-3 rounded-2xl transition-all"
         >
           <ArrowLeft size={20} /> Tədrisə Qayıt
         </button>
 
-        <motion.div 
-          initial={{ y: 50, opacity: 0 }} 
+        <motion.div
+          initial={{ y: 50, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           className="z-10 text-center"
         >
@@ -77,7 +77,7 @@ export default function GamesGrid() {
       </motion.div>
 
       {/* 2. KARTLAR SAHƏSİ - Aşağıdan yuxarıya sürüşən */}
-   <motion.div 
+      <motion.div
         initial={{ y: "20%" }}
         whileInView={{ y: 0 }}
         transition={{ type: "spring", stiffness: 60 }}
@@ -93,24 +93,87 @@ export default function GamesGrid() {
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {games?.map((game) => {
-              const animal = animalsData[(game.order-1) % animalsData.length];
-              return (
-                <div key={game._id} className="bg-slate-50 p-8 rounded-[40px] border-4 border-white hover:border-amber-300 transition-all shadow-xl hover:-translate-y-3">
-                  <div className="w-20 h-20 rounded-3xl overflow-hidden mb-6 border-4 border-white shadow-inner relative">
-                    <Image src={`/animals/${animal.image}`} alt={animal.nameAz} fill className="object-cover"/>
+          <div className="space-y-16">
+            {games?.map((topic, tIdx) => (
+              <div key={topic._id} className="bg-white p-8 rounded-[40px] border-4 border-slate-100 shadow-sm space-y-6">
+
+                {/* 1. MÖVZU ÜMUMİ MƏLUMAT VƏ HTML AÇIQLAMA BÖLMƏSİ */}
+                <div className="border-b-2 border-dashed border-slate-100 pb-6">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="bg-emerald-100 text-emerald-800 font-black text-xs px-3 py-1 rounded-xl uppercase tracking-wider">
+                      Bölmə {topic.order || tIdx + 1}
+                    </span>
+                    <h2 className="text-3xl font-black text-slate-900 tracking-tight">{topic.name}</h2>
                   </div>
-                  <h3 className="text-2xl font-black text-slate-900 mb-4">{game.title}</h3>
-                  <button 
-                    onClick={() => navigateTo(`/student/gamearena/${game._id}`)}
-                    className="w-full bg-amber-500 text-white font-black py-4 rounded-2xl hover:bg-amber-400 transition-all flex items-center justify-center gap-2 shadow-[0_5px_0_#b45309]"
-                  >
-                    <Play size={20} fill="currentColor" /> Oyuna Başla
-                  </button>
+
+                  {/* HTML formatında gələn zəngin dərslik/təlimat mətni */}
+                  <div
+                    className="prose prose-slate max-w-none text-slate-600 text-sm font-medium"
+                    dangerouslySetInnerHTML={{ __html: topic.description || "Bu bölmədəki arenaları tamamlamaq üçün kod sehrindən istifadə et!" }}
+                  />
                 </div>
-              );
-            })}
+
+                {/* 2. MÖVZUYA AİD LEVELLƏRİN (OYUNLARIN) EVVƏLKİ GRID FORMASI */}
+                <div>
+                  <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 block mb-4">
+                    🗺️ Bu Bölmənin Arenaları ({topic.levels?.length || 0} Oyun)
+                  </span>
+
+                  {topic.levels && topic.levels.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {topic.levels.map((level: any, lIdx: number) => {
+                        // Heyvan ikonunu hər levelin öz ardıcıllığına (order) görə massivdən seçirik
+                        const animal = animalsData[(level.order - 1) % animalsData.length];
+
+                        return (
+                          <div
+                            key={level._id}
+                            className="bg-slate-50 p-6 rounded-[32px] border-4 border-white hover:border-amber-300 transition-all shadow-md hover:-translate-y-2 flex flex-col justify-between"
+                          >
+                            <div>
+                              {/* Heyvan Şəkli */}
+                              <div className="w-16 h-16 rounded-2xl overflow-hidden mb-4 border-4 border-white shadow-inner relative bg-white">
+                                <Image
+                                  src={`/animals/${animal.image}`}
+                                  alt={animal.nameAz}
+                                  fill
+                                  className="object-cover p-1"
+                                />
+                              </div>
+
+                              {/* Level Başlığı */}
+                              <div className="flex items-center gap-2 mb-3">
+                                <span className="bg-amber-100 text-amber-800 text-[10px] font-black px-2 py-0.5 rounded">
+                                  Arena {level.order || lIdx + 1}
+                                </span>
+                                <span className="text-slate-400 text-[10px] font-bold">+{level.points} XP</span>
+                              </div>
+
+                              <h3 className="text-xl font-black text-slate-900 mb-4 leading-snug">
+                                {level.title}
+                              </h3>
+                            </div>
+
+                            {/* Oyuna Başla Düyməsi - Birbaşa həmin levelin ID-si ilə işləyir */}
+                            <button
+                              onClick={() => navigateTo(`/student/gamearena/${level._id}`)}
+                              className="w-full bg-amber-500 text-white font-black py-3.5 rounded-xl hover:bg-amber-400 transition-all flex items-center justify-center gap-2 shadow-[0_4px_0_#b45309] active:translate-y-0.5 active:shadow-none"
+                            >
+                              <Play size={16} fill="currentColor" /> Oyuna Başla
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      🔒 Bu bölməyə aid arenalar tezliklə aktivləşəcək!
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            ))}
           </div>
         </div>
       </motion.div>
