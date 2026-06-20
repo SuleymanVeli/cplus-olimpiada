@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { compileCppCode } from '@/utils/wandboxService';
-import { Play, Square, RotateCcw } from 'lucide-react';
+import { Play, Square, RotateCcw, HomeIcon } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import ReactCodeMirror from '@uiw/react-codemirror';
 import { cpp } from '@codemirror/lang-cpp';
@@ -11,6 +11,9 @@ import { useParams } from 'next/navigation';
 import { transformLevelWithRandomVariant } from '@/src/utils/transformLevelWithRandomVariant';
 import { cloneDeep } from 'lodash';
 import validateCodeRules from '@/src/utils/validateCodeRules';
+import { animalsData } from '@/src/lib/constants';
+import { useUser } from '@/src/context/UserContext';
+import { useTransition } from '@/src/context/TransitionContext';
 
 // 1. Frontend Parser və Animasiya Sistemi Üçün Əmrlər
 interface ExecutionStep {
@@ -84,6 +87,7 @@ interface LevelData {
   levelPoint: number;
   hasWriteTask: boolean;
   requiredWrites: any[];
+  order: number
 
 }
 
@@ -107,6 +111,10 @@ export default function RealCompilerArena() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const terminalRef = useRef<HTMLDivElement>(null);
 
+  const { navigateTo, endTransition } = useTransition();
+
+  const { userData } = useUser();
+
   const params = useParams();
   const id = params.id;
 
@@ -125,6 +133,13 @@ export default function RealCompilerArena() {
   const [activeStepIndex, setActiveStepIndex] = useState<number | null>(null);
   const [successSteps, setSuccessSteps] = useState<number[]>([]);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  const [isPopupOpen, setIsPopupOpen] = useState(true); // Səhifə açılanda avtomatik açıq olur
+  const [leftWidth, setLeftWidth] = useState(55); // Faizlə oyun sahəsinin eni
+  const [isResizing, setIsResizing] = useState(false);
+
+  // Meşə Heyvanı Məntiqi (order-ə görə dinamik seçilir)
+  const assignedAnimal = animalsData[(data?.order || 0) % animalsData.length];
 
   const [xanaYazilari, setXanaYazilari] = useState<string[][]>()
 
@@ -168,6 +183,9 @@ export default function RealCompilerArena() {
         robotRef.current.finishOpened = !changedData.mapLayout.some(row => row.includes(4));
 
         if (changedData) {
+
+          const cols = changedData?.mapLayout[0]?.length || 10;
+          const rows = changedData?.mapLayout?.length || 5;
           const boxes: typeof ironBoxesRef.current = {};
           for (let y = 0; y < rows; y++) {
             for (let x = 0; x < cols; x++) {
@@ -188,6 +206,8 @@ export default function RealCompilerArena() {
 
       } catch (error) {
         console.error("Data yüklənərkən xəta baş verdi:", error);
+      } finally {
+        endTransition();
       }
     };
 
@@ -238,7 +258,12 @@ export default function RealCompilerArena() {
       setDynamicMap(cloneDeep(changedData.mapLayout));
       setXanaYazilari(cloneDeep(changedData.xanaYazilari));
 
+
+
       if (changedData) {
+
+        const cols = changedData?.mapLayout[0]?.length || 10;
+        const rows = changedData?.mapLayout?.length || 5;
         const boxes: typeof ironBoxesRef.current = {};
         for (let y = 0; y < rows; y++) {
           for (let x = 0; x < cols; x++) {
@@ -276,6 +301,24 @@ export default function RealCompilerArena() {
 
   const cols = data?.mapLayout[0]?.length || 10;
   const rows = data?.mapLayout?.length || 5;
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      const newWidth = (e.clientX / window.innerWidth) * 100;
+      if (newWidth > 30 && newWidth < 75) setLeftWidth(newWidth); // Limit qoyuruq
+    };
+    const handleMouseUp = () => setIsResizing(false);
+
+    if (isResizing) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
 
 
   // CANVAS RENDER (Bütün yeni obyektlərin vizual qatı)
@@ -1123,9 +1166,9 @@ export default function RealCompilerArena() {
     return () => cancelAnimationFrame(animationId);
   }, [dynamicMap, xanaYazilari, data]);
 
-  const handleReset = (stop : boolean = true) => {
+  const handleReset = (stop: boolean = true) => {
     if (!originalData) return;
-    if(stop)  handleStopExecution();
+    if (stop) handleStopExecution();
 
     const changedData = transformLevelWithRandomVariant(cloneDeep(originalData))
 
@@ -1451,7 +1494,7 @@ export default function RealCompilerArena() {
     abortExecutionRef.current = false;
     setTerminalLogs([{ type: 'system', text: '⚡ Sehrli Meşə mühərriki başladılır...' }]);
 
-  
+
     if (changedData.rules) {
       // Mongoose Map tipini təmiz JS obyektinə çeviririk (əgər toJSON olunmayıbsa sığorta üçün)
       let maxUsageObj = {};
@@ -1617,57 +1660,163 @@ export default function RealCompilerArena() {
   }
 
   return (
-    <div className="h-screen w-screen bg-gradient-to-b from-sky-100 via-emerald-50 to-green-50 flex flex-col p-6 font-sans antialiased select-none overflow-hidden">
+    <div className="h-screen w-screen bg-gradient-to-b from-sky-100 via-emerald-50 to-green-50 flex flex-col p-6 font-sans antialiased select-none overflow-hidden relative">
 
-      {/* BAŞLIQ PANELİ */}
-      <div className="flex justify-between items-center bg-white p-4 rounded-[24px] border-4 border-white shadow-[0_4px_0_#e2e8f0] mb-4 shrink-0">
-        <div>
-          <h1 className="font-black text-emerald-950 tracking-tight text-lg md:text-xl leading-tight">{data.title}</h1>
-          <div className="mt-1 text-xs md:text-sm text-emerald-800" dangerouslySetInnerHTML={{ __html: data.instructionText }} />
-        </div>
-        <div className="bg-emerald-500 text-white font-black px-4 py-2 rounded-xl text-xs uppercase shrink-0">YENİ MÜHƏRRİK (MOCK)</div>
-      </div>
+      {/* 🌟 APARAT İŞ SAHƏSİ */}
+      <div className="flex-1 flex w-full items-stretch overflow-hidden relative">
 
-      {/* İŞ SAHƏSİ */}
-      <div className="flex-1 flex flex-col lg:flex-row gap-5 items-stretch overflow-hidden pb-2">
-
-        {/* CANVAS: OYUN SAHƏSİ */}
-        <div className="flex-[1.4] bg-white p-4 rounded-[28px] border-4 border-white shadow-[0_6px_0_#e2e8f0] flex items-center justify-center overflow-auto">
-          <canvas ref={canvasRef} width={cols * GRID_SIZE} height={rows * GRID_SIZE} className="bg-emerald-50/30 rounded-xl block border-2 border-dashed border-emerald-200" />
-        </div>
-
-        {/* REDAKTOR VƏ TERMİNAL PANELİ */}
-        <div className="flex-1 flex flex-col gap-4 overflow-hidden relative">
-          <div className="flex-1 relative rounded-2xl overflow-hidden min-h-[200px]">
-            <div className="absolute inset-0 bg-white rounded-[24px] border-4 border-white shadow-[0_6px_0_#e2e8f0] flex flex-col overflow-hidden">
-              <div className="bg-[#f8fafc] px-4 py-2 border-b-2 border-slate-100 flex justify-between items-center">
-                <span className="text-xs font-mono font-black text-slate-500">solution.cpp</span>
-                <span className="text-[10px] bg-amber-100 text-amber-800 font-black px-2.5 py-0.5 rounded-full uppercase">C++ 17</span>
-              </div>
-              <div className="flex-1 max-h-3/4 overflow-auto bg-white task-editor">
-                <ReactCodeMirror
-                  value={code}
-                  height="100%"
-                  theme="light"
-                  extensions={[cpp()]}
-                  onChange={(value) => setCode(value)}
-                  editable={!isRunning && !isTerminalExpanded}
+        {/* 🧩 SOL PANEL: OYUN SAHƏSİ (Özəl Çərçivə və Üzərindəki Absolute Heyvan) */}
+        <div
+          style={{ width: `${leftWidth}%` }}
+          className="flex flex-col items-stretch overflow-hidden h-full pr-3 relative pb-2"
+        >
+          {/* 🐾 ABSOLUTE MENTOR HEYVAN VƏ BALLOON PANELİ */}
+          <div className="absolute top-[10px] left-[10px]  z-20 flex items-end gap-3 pointer-events-auto">
+            {/* Sabit Heyvan Şəkli və Altındakı Başlıq */}
+            <div className="flex flex-col items-center">
+              <div
+                onClick={() => setIsPopupOpen(true)}
+                className="w-24 h-24 rounded-full bg-white border-4 border-emerald-500 p-1 shadow-lg cursor-pointer transform hover:scale-105 active:scale-95 transition-all shrink-0"
+              >
+                <img
+                  src={`/animals/${assignedAnimal.image}`}
+                  alt={data?.title}
+                  className="w-full h-full object-contain rounded-xl"
                 />
               </div>
+              {/* Şəklin altındakı Məsələ Adı */}
+              <span className="text-emerald-600 text-[20px] mt-1 font-bold text-center" >
+                {assignedAnimal.nameAz} <br /> {data?.title}
+              </span>
+            </div>
+
+            {/* Atılıb Düşən İzah Mesajı (Danışıq Balonu) */}
+            <div
+              onClick={() => setIsPopupOpen(true)}
+              className="bg-amber-400 border-4 border-white rounded-2xl px-3 py-1.5 text-xs font-black text-slate-900 shadow-md cursor-pointer animate-[bounce_2.5s_infinite] mb-20 relative hover:bg-amber-300 transition-colors"
+            >
+              <div className="absolute left-[-12px] bottom-2 w-0 h-0 border-t-[6px] border-t-transparent border-r-[10px] border-r-white border-b-[6px] border-b-transparent"></div>
+              Tapşırığı gör! 🐾
+            </div>
+          </div>
+
+          {/* SOL PANELİN İÇİ (CANVAS SAHƏSİ) */}
+          <div className="flex-1 bg-white p-4 rounded-[32px] border-4 border-emerald-500 shadow-[0_6px_0_#065f46] flex items-center justify-center overflow-auto relative">
+
+            {/* Geriye Qaytarmaq (Sıfırlama) İkonu - Sağ Yuxarı Küncdə */}
+            <button
+              onClick={() => { navigateTo("/student/gamearena") }}
+              title="Mərhələni Sıfırla"
+              className="absolute top-4 right-4 z-10 p-2.5 bg-slate-100 hover:bg-rose-50 border-2 border-slate-200 hover:border-rose-300 text-slate-600 hover:text-rose-500 rounded-full transition-all active:scale-90 shadow-sm"
+            >
+              <HomeIcon size={16} className="font-black" />
+            </button>
+
+            {/* Oyunun Canvası */}
+            <canvas
+              ref={canvasRef}
+              width={cols * GRID_SIZE}
+              height={rows * GRID_SIZE}
+              className="bg-emerald-50/20 rounded-2xl block border-2 border-dashed border-emerald-100"
+            />
+          </div>
+        </div>
+
+        {/* ↕️ SÜRÜŞDÜRMƏ BARU (RESIZER) */}
+        <div
+          onMouseDown={() => setIsResizing(true)}
+          className={`w-2.5 hover:w-3.5 bg-gradient-to-b from-emerald-400 to-green-500 cursor-col-resize rounded-full mx-1 transition-all flex items-center justify-center shadow-inner ${isResizing ? 'bg-amber-400 w-3.5' : ''} pb-2`}
+        >
+          <div className="w-1 h-12 bg-white/50 rounded-full"></div>
+        </div>
+
+        {/* 💻 SAĞ PANEL: EDİTOR VƏ TERMİNAL (Başlıqsız, Özəl Çərçivə və Tələbə Avatarı Üzərində) */}
+        <div
+          style={{ width: `${100 - leftWidth}%` }}
+          className="flex flex-col items-stretch overflow-hidden h-full pl-3 relative pb-2"
+        >
+          {/* 🧑‍🎓 ABSOLUTE TƏLƏBƏ AVATARI */}
+          <div className="absolute top-[10px] right-[10px]  z-20 flex flex-col items-center pointer-events-none">
+            <div className="w-24 h-24 rounded-full overflow-hidden bg-white border-4 border-purple-500 p-0.5 shadow-lg flex items-center justify-center">
+              <img
+                src={`/avatars/avatar-${userData?.avatar || 1}.png`}
+                alt="Profilim"
+                className="w-full h-full object-contain"
+              />
+            </div>
+            <span className="text-purple-600 font-black text-[20px] mt-1 ">
+              {userData?.fullName || "Şagird"}
+            </span>
+          </div>
+
+          {/* SAĞ PANELİN İÇİ (EDİTOR SAHƏSİ - BAŞLIQLAR SİLİNDİ) */}
+          <div className="flex-1 flex flex-col gap-3 overflow-hidden relative bg-white p-4 rounded-[32px] border-4 border-purple-500 shadow-[0_6px_0_#581c87]">
+
+            {/* CodeMirror Redaktoru (Üst başlıq tamamilə təmizləndi) */}
+            <div className="flex-1 relative mb-24 rounded-2xl overflow-hidden border-2 border-slate-100 bg-white min-h-[150px] custom-scrollbar-editor">
+              <ReactCodeMirror
+                value={code}
+                height="100%"
+                theme="light"
+                extensions={[cpp()]}
+                onChange={(value) => setCode(value)}
+                editable={!isRunning && !isTerminalExpanded}
+                className="h-full text-sm"
+              />
+              <style jsx global>{`
+    /* 1. Üfiqi scrollbar-ın (Horizontal) yerini tənzimləyirik */
+    .custom-scrollbar-editor .cm-scroller::-webkit-scrollbar {
+      height: 6px !important;
+      width: 6px !important;
+    }
+
+    /* 2. Sürüşmə oxuna yuxarıdan xüsusi margin / boşluq veririk ki, şəklin altından qaçsın */
+    .custom-scrollbar-editor .cm-scroller::-webkit-scrollbar-track {
+      background: transparent !important;
+      margin-top: 20px !important;    /* Yuxarıdan (şəkildən) boşluq buraxır */
+      margin-bottom: 5px !important;  /* Altdan səliqəli məsafə */
+    }
+
+    /* 3. Sürüşən barın özünün dizaynı */
+    .custom-scrollbar-editor .cm-scroller::-webkit-scrollbar-thumb {
+      background-color: #cbd5e1 !important; /* Slate-300 */
+      border-radius: 10px !important;
+    }
+
+    .custom-scrollbar-editor .cm-scroller::-webkit-scrollbar-thumb:hover {
+      background-color: #94a3b8 !important; /* Slate-400 */
+    }
+
+    /* 4. Alternativ olaraq CodeMirror-un öz daxili scroll komponentlərini də aşağı sıxırıq */
+    .custom-scrollbar-editor .cm-scrollbar-horizontal {
+      bottom: 2px !important;
+      margin-top: 15px !important; /* Yuxarı kənar margin sığortası */
+    }
+  `}</style>
             </div>
 
             {/* SÜRÜŞƏN TERMİNAL */}
-            <div className={`absolute left-0 right-0 bottom-0 bg-[#1e293b] rounded-[20px] border-4 border-[#334155] flex flex-col transition-all duration-500 shadow-2xl ${isTerminalExpanded ? 'top-0 h-full z-10' : 'h-[110px]'}`}>
-              <div className="flex justify-between items-center px-4 py-2 bg-[#0f172a] rounded-t-[14px] border-b border-slate-700 shrink-0">
+            {/* 💻 SÜRÜŞƏN TERMİNAL */}
+            <div
+              className={`absolute left-4 right-4 bottom-16 bg-[#1e293b] rounded-[20px] border-4 border-[#334155] flex flex-col transition-all duration-500 ease-out shadow-2xl origin-bottom ${isTerminalExpanded
+                ? 'h-[calc(100%-80px)] z-30 border-purple-400' // Genişlənəndə: Yuxarıya doğru rəvan uzanır
+                : 'h-[100px] z-10' // Normal halda: Aşağıda sakitcə durur
+                }`}
+            >
+              <div className="flex justify-between items-center px-4 py-1.5 bg-[#0f172a] rounded-t-[14px] border-b border-slate-700 shrink-0">
                 <div className="text-[10px] text-slate-400 font-mono font-black uppercase tracking-wider flex items-center gap-1.5">
                   <span className={`w-2 h-2 rounded-full ${isRunning ? 'bg-rose-500 animate-pulse' : 'bg-emerald-400'}`}></span>
-                  Konsol Çıxışı / Alqoritm Addımları
+                  Konsol Çıxışı
                 </div>
-                <button onClick={() => setIsTerminalExpanded(!isTerminalExpanded)} className="text-slate-400 hover:text-white text-[11px] font-bold">
+                <button
+                  onClick={() => setIsTerminalExpanded(!isTerminalExpanded)}
+                  className="text-slate-400 hover:text-white text-[10px] font-bold bg-slate-800/50 hover:bg-slate-800 px-2 py-0.5 rounded-md transition-colors"
+                >
                   {isTerminalExpanded ? "↩ Koda Qayıt" : "Genişlət ⛶"}
                 </button>
               </div>
-              <div ref={terminalRef} className="flex-1 font-mono text-xs text-slate-200 overflow-y-auto p-3 flex flex-col gap-1.5">
+
+              <div className="flex-1 font-mono text-xs text-slate-200 overflow-y-auto p-3 flex flex-col gap-1">
                 {terminalLogs.map((log, idx) => (
                   <div key={idx} className={log.type === 'system' ? 'text-amber-400 font-bold' : log.type === 'error' ? 'text-rose-400' : 'text-emerald-400 font-black'}>{log.text}</div>
                 ))}
@@ -1675,33 +1824,67 @@ export default function RealCompilerArena() {
                   const isActive = activeStepIndex === index;
                   const isSuccess = successSteps.includes(index);
                   return (
-                    <div key={index} className={`px-2 py-1 rounded-lg font-bold transition-all ${isActive ? 'bg-amber-400 text-slate-950 translate-x-1' : isSuccess ? 'text-emerald-400 bg-emerald-500/5' : 'text-slate-500'}`}>
+                    <div key={index} className={`px-2 py-0.5 rounded-md font-bold transition-all ${isActive ? 'bg-amber-400 text-slate-950 translate-x-1' : isSuccess ? 'text-emerald-400 bg-emerald-500/5' : 'text-slate-500'}`}>
                       {isActive ? '👉 ' : '# '}{item.raw}
                     </div>
                   );
                 })}
               </div>
             </div>
-          </div>
 
-          {/* İDARƏETMƏ DÜYMƏLƏRİ */}
-          <div className="p-3 bg-white rounded-[20px] border-4 border-white shadow-[0_4px_0_#e2e8f0] flex gap-3 shrink-0">
-            {isRunning ? (
-              <button onClick={handleStopExecution} className="flex-[2.5] bg-rose-500 hover:bg-rose-400 text-white font-black text-xs py-3 px-4 rounded-xl shadow-[0_4px_0_#9f1239] active:translate-y-[4px] active:shadow-none uppercase tracking-wider transition-all">
-                Dayandır <Square size={12} className="inline ml-1" fill="currentColor" />
-              </button>
-            ) : (
-              <button onClick={handleCompileAndRun} className="flex-[2.5] bg-emerald-500 hover:bg-emerald-400 text-white font-black text-xs py-3 px-4 rounded-xl shadow-[0_4px_0_#065f46] active:translate-y-[4px] active:shadow-none uppercase tracking-wider transition-all">
-                Kodu Çalışdır <Play size={12} className="inline ml-1" fill="currentColor" />
-              </button>
-            )}
-            <button onClick={handleReset} className="flex-[1] bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs py-3 px-3 rounded-xl shadow-[0_4px_0_#cbd5e1] active:translate-y-[4px] active:shadow-none uppercase tracking-wider transition-all">
-              Sıfırla <RotateCcw size={12} className="inline ml-1" />
-            </button>
-          </div>
+            {/* 🛠️ İDARƏETMƏ DÜYMƏLƏRİ */}
+            <div className="flex gap-2 shrink-0 pt-2 border-t-2 border-dashed border-slate-100 z-20">
+              {isRunning ? (
+                <button onClick={handleStopExecution} className="flex-1 bg-rose-500 hover:bg-rose-400 text-white font-black text-xs py-3 px-4 rounded-xl shadow-[0_4px_0_#9f1239] active:translate-y-[4px] active:shadow-none uppercase tracking-wider transition-all">
+                  Dayandır <Square size={12} className="inline ml-1" fill="currentColor" />
+                </button>
+              ) : (
+                <button onClick={handleCompileAndRun} className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-white font-black text-xs py-3 px-4 rounded-xl shadow-[0_4px_0_#065f46] active:translate-y-[4px] active:shadow-none uppercase tracking-wider transition-all">
+                  Kodu Çalışdır <Play size={12} className="inline ml-1" fill="currentColor" />
+                </button>
+              )}
 
+              <button onClick={() => { handleReset() }} className="flex-[1] bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs py-3 px-3 rounded-xl shadow-[0_4px_0_#cbd5e1] active:translate-y-[4px] active:shadow-none uppercase tracking-wider transition-all">
+                Sıfırla <RotateCcw size={12} className="inline ml-1" />
+              </button>
+            </div>
+
+          </div>
         </div>
       </div>
+
+      {/* 🌊 DALĞALI TAPŞIRIQ POPUP-U */}
+      {isPopupOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-md p-4 animate-[fadeIn_0.2s_ease-out]">
+          <div className="bg-white p-6 pt-12 rounded-[50px_20px_60px_30px] border-8 border-emerald-400 shadow-[0_16px_0_#065f46] text-center max-w-lg w-full relative">
+
+            {/* Sol yuxarı küncdəki asılı heyvan */}
+            <div className="absolute -top-14 left-6 w-24 h-24 bg-white border-4 border-emerald-400 rounded-full p-2 shadow-xl transform -rotate-6">
+              <img
+                src={`/animals/${assignedAnimal.image}`}
+                alt={assignedAnimal.nameAz}
+                className="w-full h-full object-contain"
+              />
+            </div>
+
+            <h2 className="text-xl font-black text-emerald-950 text-left pl-20 mb-2 border-b-2 border-dashed border-slate-100 pb-2">
+              🐾 {data?.title}
+            </h2>
+
+            <div className='mb-4'>
+              <div dangerouslySetInnerHTML={{ __html: data?.instructionText }} />
+            </div>
+
+
+            <button
+              onClick={() => setIsPopupOpen(false)}
+              className="w-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-black py-3.5 rounded-2xl shadow-[0_5px_0_#b45309] active:translate-y-[5px] active:shadow-none uppercase text-xs tracking-wider transition-all"
+            >
+              Anladım, Koda Keçək! 🚀
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* UĞUR MODALI */}
       {showSuccessModal && (
