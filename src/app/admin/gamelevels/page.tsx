@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, X, Loader2, Save, Layers, MousePointer, Square, Package, Terminal, Flag, Sparkles, Type, Edit3, ArrowUp, ArrowRight, ArrowDown, ArrowLeft } from 'lucide-react';
+import { Plus, Trash2, X, Loader2, Save, Layers, MousePointer, Square, Package, Terminal, Flag, Sparkles, Type, Edit3, ArrowUp, ArrowRight, ArrowDown, ArrowLeft, Circle } from 'lucide-react';
 
 interface GameForm {
   title: string;
@@ -14,13 +14,13 @@ interface GameForm {
   order: number;
 }
 
-type ToolType = 'empty' | 'wall' | 'box' | 'terminal' | 'finish' | 'portal' | 'yazi' | 'tapsiriq';
+type ToolType = 'empty' | 'wall' | 'box' | 'iron_box' | 'button' | 'terminal' | 'finish' | 'portal' | 'yazi' | 'tapsiriq';
 
 export default function AdminMagiForestPage() {
   const [topics, setTopics] = useState<any[]>([]);
   const [games, setGames] = useState<any[]>([]);
   const [selectedTopicId, setSelectedTopicId] = useState<string>('');
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingGameId, setEditingGameId] = useState<string | null>(null);
@@ -41,6 +41,21 @@ export default function AdminMagiForestPage() {
 
   const [activeTool, setActiveTool] = useState<ToolType | null>(null);
   const [selectedCell, setSelectedCell] = useState<{ y: number, x: number } | null>(null);
+
+  const [rules, setRules] = useState<{ required: string[]; forbidden: string[]; maxUsage: Array<{ key: string; val: number }> }>({
+    required: [],
+    forbidden: [],
+    maxUsage: []
+  });
+
+
+
+  const [variants, setVariants] = useState<Array<{ values: Array<{ name: string; value: string }> }>>([]);
+
+  const [newRequired, setNewRequired] = useState('');
+  const [newForbidden, setNewForbidden] = useState('');
+  const [newLimitKey, setNewLimitKey] = useState('');
+  const [newLimitVal, setNewLimitVal] = useState(1);
 
   const [form, setForm] = useState<GameForm>({
     title: '',
@@ -135,6 +150,18 @@ export default function AdminMagiForestPage() {
       } else if (activeTool === 'tapsiriq') {
         const exists = requiredWrites.some(w => w.x === x && w.y === y);
         if (!exists) setRequiredWrites(prev => [...prev, { x, y, expected: '1' }]);
+      } else if (activeTool === 'iron_box') {
+        // Avtomatik ID təyin etmək üçün xəritədəki ən böyük tək qutu ID-sini tapırıq (Məs: 21, 23, 25...)
+        let maxId = 19;
+        mapLayout.forEach(row => row.forEach(v => { if (v >= 21 && v <= 29 && v % 2 !== 0) maxId = Math.max(maxId, v); }));
+        newLayout[y][x] = maxId + 2 > 29 ? 21 : maxId + 2; // Sığorta
+      }
+      else if (activeTool === 'button') {
+        // Düymələr cüt rəqəmlərdir (20, 22, 24...)
+        let maxId = 18;
+        mapLayout.forEach(row => row.forEach(v => { if (v >= 20 && v <= 28 && v % 2 === 0) maxId = Math.max(maxId, v); }));
+        newLayout[y][x] = maxId + 2 > 28 ? 20 : maxId + 2;
+        newXanaYazilari[y][x] = 'right'; // Default hərəkət istiqaməti
       }
 
       if (activeTool === 'empty') {
@@ -166,6 +193,8 @@ export default function AdminMagiForestPage() {
     setXalSistemi([]);
     setRequiredWrites([]);
     setIsModalOpen(true);
+    setRules({ required: [], forbidden: [], maxUsage: [] });
+    setVariants([]);
   };
 
   const handleOpenEditModal = (game: any) => {
@@ -193,6 +222,19 @@ export default function AdminMagiForestPage() {
     setRequiredWrites(game.requiredWrites || []);
     setJsonInput(JSON.stringify(game, null, 2));
     setIsModalOpen(true);
+    setVariants(game.variants || []);
+    if (game.rules) {
+      const maxUsageArr = game.rules.maxUsage 
+        ? Object.entries(game.rules.maxUsage).map(([key, val]) => ({ key, val: val as number }))
+        : [];
+      setRules({
+        required: game.rules.required || [],
+        forbidden: game.rules.forbidden || [],
+        maxUsage: maxUsageArr
+      });
+    } else {
+      setRules({ required: [], forbidden: [], maxUsage: [] });
+    }
   };
 
   const toggleTool = (tool: ToolType) => {
@@ -220,6 +262,9 @@ export default function AdminMagiForestPage() {
     setValidationError(null);
     let payload: any = { topicId: selectedTopicId };
 
+    const maxUsageMap: Record<string, number> = {};
+    rules.maxUsage.forEach(item => { maxUsageMap[item.key] = item.val; });
+
     if (activeTab === 'form') {
       if (!form.title.trim()) return setValidationError("Oyun adı mütləqdir!");
       payload.levelData = {
@@ -229,7 +274,13 @@ export default function AdminMagiForestPage() {
         xanaTipleri,
         hasWriteTask: !hasTerminal,
         xalSistemi: hasTerminal ? xalSistemi : [],
-        requiredWrites: !hasTerminal ? requiredWrites : []
+        requiredWrites: !hasTerminal ? requiredWrites : [],
+        variants, // 🚀 Yeni əlavə
+        rules: {  // 🚀 Yeni əlavə
+          required: rules.required,
+          forbidden: rules.forbidden,
+          maxUsage: maxUsageMap
+        }
       };
     } else {
       try {
@@ -267,6 +318,8 @@ export default function AdminMagiForestPage() {
     if (v >= 10) return "bg-cyan-100 border-cyan-300 text-cyan-800";
     if (xanaTipleri[y]?.[x]) return "bg-blue-50 border-blue-200 text-blue-700";
     if (requiredWrites.some(w => w.x === x && w.y === y)) return "bg-yellow-50 border-yellow-200 text-yellow-700";
+    if (v >= 21 && v <= 29 && v % 2 !== 0) return "bg-slate-600 border-slate-800 text-white font-mono"; // Dəmir qutu rəngi
+    if (v >= 20 && v <= 29 && v % 2 === 0) return "bg-rose-100 border-rose-400 text-rose-800 font-bold"; // Düymə rəngi
     return "bg-white border-slate-200 hover:bg-slate-50 text-slate-400";
   };
 
@@ -280,7 +333,7 @@ export default function AdminMagiForestPage() {
   return (
     <div className="min-h-screen bg-slate-50 p-6 text-slate-800 font-sans">
       <div className="max-w-6xl mx-auto space-y-6">
-        
+
         {/* TOP BAR */}
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
           <div className="flex items-center gap-2">
@@ -336,7 +389,7 @@ export default function AdminMagiForestPage() {
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-6xl max-h-[94vh] flex flex-col overflow-hidden border border-slate-200">
-            
+
             <div className="p-4 border-b bg-slate-50 flex justify-between items-center">
               <h2 className="text-sm font-black uppercase tracking-tight text-slate-900">{editingGameId ? "Arenanı Redaktə Et" : "Yeni Arena Yaradılması"}</h2>
               <div className="flex gap-2 items-center">
@@ -353,14 +406,14 @@ export default function AdminMagiForestPage() {
 
               {activeTab === 'form' && (
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-5 flex-1 items-start">
-                  
+
                   <div className="lg:col-span-3 space-y-4">
-                    
+
                     {/* METADATA PARAMS */}
                     <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 bg-slate-50 p-3 rounded-xl border">
                       <div className="col-span-2">
                         <label className="text-[10px] font-bold text-slate-400 uppercase block mb-0.5">Arena Adı</label>
-                        <input type="text" value={form.title} onChange={(e) => setForm({...form, title: e.target.value})} className="w-full px-2 py-1.5 border rounded-lg text-xs font-bold" />
+                        <input type="text" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="w-full px-2 py-1.5 border rounded-lg text-xs font-bold" />
                       </div>
                       <div>
                         <label className="text-[10px] font-bold text-slate-400 uppercase block mb-0.5">En (Sütun)</label>
@@ -372,11 +425,11 @@ export default function AdminMagiForestPage() {
                       </div>
                       <div>
                         <label className="text-[10px] font-bold text-slate-400 uppercase block mb-0.5">Platforma XP</label>
-                        <input type="number" value={form.points} onChange={(e) => setForm({...form, points: parseInt(e.target.value) || 0})} className="w-full px-2 py-1.5 border rounded-lg text-xs font-bold text-center text-amber-600 bg-amber-50/40" />
+                        <input type="number" value={form.points} onChange={(e) => setForm({ ...form, points: parseInt(e.target.value) || 0 })} className="w-full px-2 py-1.5 border rounded-lg text-xs font-bold text-center text-amber-600 bg-amber-50/40" />
                       </div>
                       <div>
                         <label className="text-[10px] font-bold text-slate-400 uppercase block mb-0.5">Sıralama (Order)</label>
-                        <input type="number" value={form.order} onChange={(e) => setForm({...form, order: parseInt(e.target.value) || 1})} className="w-full px-2 py-1.5 border rounded-lg text-xs font-bold text-center bg-slate-100" />
+                        <input type="number" value={form.order} onChange={(e) => setForm({ ...form, order: parseInt(e.target.value) || 1 })} className="w-full px-2 py-1.5 border rounded-lg text-xs font-bold text-center bg-slate-100" />
                       </div>
                     </div>
 
@@ -394,6 +447,14 @@ export default function AdminMagiForestPage() {
                         <button type="button" onClick={() => toggleTool('yazi')} className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded-lg border transition-all ${activeTool === 'yazi' ? 'bg-blue-500 border-blue-500 text-white shadow-sm' : 'bg-blue-50 text-blue-700 border-blue-200'}`}><Type size={12} /> Yazı Oxu</button>
                         <button type="button" onClick={() => toggleTool('tapsiriq')} className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded-lg border transition-all ${activeTool === 'tapsiriq' ? 'bg-yellow-500 border-yellow-500 text-white shadow-sm' : 'bg-yellow-50 text-yellow-700 border-yellow-200'}`}><Edit3 size={12} /> Tapşırıq Yazısı</button>
                         <button type="button" onClick={() => toggleTool('empty')} className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded-lg border border-dashed transition-all ${activeTool === 'empty' ? 'bg-slate-700 border-slate-700 text-white shadow-sm' : 'bg-white text-slate-400 border-slate-300'}`}>Boşalt</button>
+                        <button type="button" onClick={() => toggleTool('iron_box')} className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded-lg border transition-all ${activeTool === 'iron_box' ? 'bg-slate-700 border-slate-700 text-white shadow-sm' : 'bg-slate-100 text-slate-700 border-slate-300'}`}>
+                          <Package size={12} className="text-slate-500" /> Dəmir Qutu (21)
+                        </button>
+
+                        <button type="button" onClick={() => toggleTool('button')} className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded-lg border transition-all ${activeTool === 'button' ? 'bg-rose-600 border-rose-600 text-white shadow-sm' : 'bg-rose-50 text-rose-700 border-rose-200'}`}>
+                          <Circle size={12} /> Düymə (20)
+                        </button>
+
                       </div>
                     </div>
 
@@ -411,8 +472,10 @@ export default function AdminMagiForestPage() {
                               else if (cellValue === 2) cellIcon = "📦";
                               else if (cellValue === 4) cellIcon = "🖥️";
                               else if (cellValue === 5) cellIcon = "🏁";
-                              else if (cellValue >= 10) cellIcon = `🌀${cellValue}`;
-                              
+                              else if (cellValue >= 10 && cellValue <= 19) cellIcon = `🌀${cellValue}`;
+                              else if (cellValue >= 20 && cellValue <= 29 && cellValue%2==0) cellIcon = `🟩${cellValue}`;
+                              else if (cellValue >= 20 && cellValue <= 29 && cellValue%2!=0) cellIcon = `📦${cellValue}`;
+
                               const hasYazi = xanaTipleri[y]?.[x] !== "";
                               const hasTapsiriq = requiredWrites.some(w => w.x === x && w.y === y);
 
@@ -430,7 +493,7 @@ export default function AdminMagiForestPage() {
                                     <span className="font-black text-[9px] leading-none">{cellIcon}</span>
                                   )}
                                   {!cellIcon && !isRobot && <span className="text-[7px] opacity-25 font-mono">({x},{y})</span>}
-                                  
+
                                   {hasYazi && !cellIcon && <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-blue-500 rounded-full"></span>}
                                   {hasTapsiriq && !cellIcon && <span className="absolute bottom-0.5 right-0.5 w-1.5 h-1.5 bg-yellow-500 rounded-full"></span>}
                                 </button>
@@ -443,7 +506,7 @@ export default function AdminMagiForestPage() {
 
                     <div>
                       <label className="text-[10px] font-bold text-slate-400 uppercase block mb-0.5">Təlimat Mətni</label>
-                      <textarea rows={2} value={form.instructionText} onChange={(e) => setForm({...form, instructionText: e.target.value})} className="w-full p-2 border rounded-xl text-xs" />
+                      <textarea rows={2} value={form.instructionText} onChange={(e) => setForm({ ...form, instructionText: e.target.value })} className="w-full p-2 border rounded-xl text-xs" />
                     </div>
                   </div>
 
@@ -470,6 +533,27 @@ export default function AdminMagiForestPage() {
                             </div>
                           )}
 
+                          {mapLayout[selectedCell.y]?.[selectedCell.x] >= 20 && mapLayout[selectedCell.y]?.[selectedCell.x] <= 29 && mapLayout[selectedCell.y]?.[selectedCell.x] % 2 === 0 && (
+                            <div className="bg-white p-2 border rounded-lg space-y-2">
+                              <label className="text-[10px] font-bold text-rose-600 uppercase block">🔘 Düymə İtələmə İstiqaməti</label>
+                              <select
+                                value={xanaYazilari[selectedCell.y]?.[selectedCell.x] || 'right'}
+                                onChange={(e) => {
+                                  const n = [...xanaYazilari];
+                                  n[selectedCell.y][selectedCell.x] = e.target.value;
+                                  setXanaYazilari(n);
+                                }}
+                                className="w-full text-[11px] p-1 border rounded font-bold"
+                              >
+                                <option value="RIGHT">Sağ → (right)</option>
+                                <option value="LEFT">← Sol (left)</option>
+                                <option value="UP">Yuxarı ↑ (up)</option>
+                                <option value="DOWN">Aşağı ↓ (down)</option>
+                              </select>
+                              <span className="text-[9px] text-slate-400 block italic">Qutu bu düymənin üzərinə gələndə bu istiqamətə sürüşəcək.</span>
+                            </div>
+                          )}
+
                           {/* 🖥️ TERMINAL (XAL SİSTEMİ BURADA İDARƏ OLUNUR) */}
                           {mapLayout[selectedCell.y]?.[selectedCell.x] === 4 && (
                             <div className="bg-white p-2 border rounded-lg space-y-2">
@@ -477,7 +561,7 @@ export default function AdminMagiForestPage() {
                                 <label className="text-[10px] font-bold text-purple-600 uppercase block">📊 Terminal Xal Sistemi</label>
                                 <button type="button" onClick={addXalSistemiRow} className="text-[9px] bg-purple-100 hover:bg-purple-200 text-purple-700 px-1.5 py-0.5 rounded font-bold">+ Əlavə Et</button>
                               </div>
-                              
+
                               <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
                                 {xalSistemi.map((row, index) => (
                                   <div key={index} className="border p-1.5 rounded-md bg-slate-50 space-y-1 relative group">
@@ -524,24 +608,24 @@ export default function AdminMagiForestPage() {
                     {/* ROBOT PARAMETRLƏRİ */}
                     <div className="border-t pt-3 space-y-2 bg-white/50 p-2 rounded-lg mt-4">
                       <span className="text-[10px] font-black uppercase text-indigo-600 block">🤖 Robot & Tapşırıq Ayarları</span>
-                      
+
                       <div className="space-y-1">
                         <label className="text-[9px] font-bold text-slate-400 uppercase">C++ Maksimum Bal (levelPoint)</label>
-                        <input type="number" value={form.levelPoint} onChange={(e) => setForm({...form, levelPoint: parseInt(e.target.value) || 0})} className="w-full p-1 border rounded text-xs font-bold text-center text-purple-700 bg-purple-50/40" />
+                        <input type="number" value={form.levelPoint} onChange={(e) => setForm({ ...form, levelPoint: parseInt(e.target.value) || 0 })} className="w-full p-1 border rounded text-xs font-bold text-center text-purple-700 bg-purple-50/40" />
                       </div>
 
                       <div className="grid grid-cols-2 gap-1 text-[11px] pt-1">
                         <div>
                           <label className="text-[8px] font-bold text-slate-400 block uppercase">Start X</label>
-                          <input type="number" value={form.startX} onChange={(e) => setForm({...form, startX: parseInt(e.target.value) || 0})} className="w-full border p-1 rounded text-center font-bold" />
+                          <input type="number" value={form.startX} onChange={(e) => setForm({ ...form, startX: parseInt(e.target.value) || 0 })} className="w-full border p-1 rounded text-center font-bold" />
                         </div>
                         <div>
                           <label className="text-[8px] font-bold text-slate-400 block uppercase">Start Y</label>
-                          <input type="number" value={form.startY} onChange={(e) => setForm({...form, startY: parseInt(e.target.value) || 0})} className="w-full border p-1 rounded text-center font-bold" />
+                          <input type="number" value={form.startY} onChange={(e) => setForm({ ...form, startY: parseInt(e.target.value) || 0 })} className="w-full border p-1 rounded text-center font-bold" />
                         </div>
                         <div className="col-span-2">
                           <label className="text-[8px] font-bold text-slate-400 block uppercase">Robotun İstiqaməti</label>
-                          <select value={form.startDirection} onChange={(e) => setForm({...form, startDirection: e.target.value as any})} className="w-full border p-1 rounded font-bold text-xs">
+                          <select value={form.startDirection} onChange={(e) => setForm({ ...form, startDirection: e.target.value as any })} className="w-full border p-1 rounded font-bold text-xs">
                             <option value="right">Sağ →</option>
                             <option value="left">← Sol</option>
                             <option value="up">Yuxarı ↑</option>
@@ -561,6 +645,98 @@ export default function AdminMagiForestPage() {
                   <textarea value={jsonInput} onChange={(e) => setJsonInput(e.target.value)} spellCheck={false} className="w-full h-full p-3 text-xs font-mono text-emerald-600 bg-slate-900 border rounded-xl outline-none" style={{ minHeight: '320px' }} />
                 </div>
               )}
+
+              {/* ================================================================= */}
+              {/* 🆕 YENİ BÖLMƏ: OLİMPİADA QAYDALARI PANELİ (RULES) */}
+              {/* ================================================================= */}
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+                <h3 className="text-xs font-black uppercase text-slate-700 flex items-center gap-1">🛠️ Səviyyə Qaydaları və Məhdudiyyətlər</h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Mütləq Əmrlər */}
+                  <div className="bg-white p-3 rounded-lg border space-y-2">
+                    <label className="text-[10px] font-bold text-emerald-600 uppercase block">🟢 Mütləq Əmrlər (Required)</label>
+                    <div className="flex gap-1">
+                      <input type="text" placeholder="if, while..." value={newRequired} onChange={(e) => setNewRequired(e.target.value)} className="flex-1 p-1 border rounded text-xs" />
+                      <button type="button" onClick={() => { if (newRequired) { setRules({ ...rules, required: [...rules.required, newRequired] }); setNewRequired(''); } }} className="bg-emerald-600 text-white px-2 rounded text-xs">+</button>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {rules.required.map(r => <span key={r} className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-1">{r} <X size={10} className="cursor-pointer" onClick={() => setRules({ ...rules, required: rules.required.filter(x => x !== r) })} /></span>)}
+                    </div>
+                  </div>
+
+                  {/* Qadağan Əmrlər */}
+                  <div className="bg-white p-3 rounded-lg border space-y-2">
+                    <label className="text-[10px] font-bold text-rose-600 uppercase block">🔴 Qadağan Əmrlər (Forbidden)</label>
+                    <div className="flex gap-1">
+                      <input type="text" placeholder="for, goto..." value={newForbidden} onChange={(e) => setNewForbidden(e.target.value)} className="flex-1 p-1 border rounded text-xs" />
+                      <button type="button" onClick={() => { if (newForbidden) { setRules({ ...rules, forbidden: [...rules.forbidden, newForbidden] }); setNewForbidden(''); } }} className="bg-rose-600 text-white px-2 rounded text-xs">+</button>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {rules.forbidden.map(r => <span key={r} className="bg-rose-50 text-rose-700 border border-rose-200 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-1">{r} <X size={10} className="cursor-pointer" onClick={() => setRules({ ...rules, forbidden: rules.forbidden.filter(x => x !== r) })} /></span>)}
+                    </div>
+                  </div>
+
+                  {/* Limitli Əmrlər */}
+                  <div className="bg-white p-3 rounded-lg border space-y-2">
+                    <label className="text-[10px] font-bold text-amber-600 uppercase block">🟡 Limitli Əmrlər (Max Usage)</label>
+                    <div className="flex gap-1">
+                      <input type="text" placeholder="robot.ireli()" value={newLimitKey} onChange={(e) => setNewLimitKey(e.target.value)} className="flex-1 p-1 border rounded text-xs" />
+                      <input type="number" min={1} value={newLimitVal} onChange={(e) => setNewLimitVal(parseInt(e.target.value) || 1)} className="w-12 p-1 border rounded text-xs text-center" />
+                      <button type="button" onClick={() => { if (newLimitKey) { setRules({ ...rules, maxUsage: [...rules.maxUsage, { key: newLimitKey, val: newLimitVal }] }); setNewLimitKey(''); } }} className="bg-amber-600 text-white px-2 rounded text-xs">+</button>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      {rules.maxUsage.map(r => <div key={r.key} className="bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded text-[10px] flex justify-between items-center"><span>{r.key} &le; {r.val} dəfə</span><X size={10} className="cursor-pointer text-amber-600" onClick={() => setRules({ ...rules, maxUsage: rules.maxUsage.filter(x => x.key !== r.key) })} /></div>)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ================================================================= */}
+              {/* 🆕 YENİ BÖLMƏ: DİNAMİK SSENARİLƏR PANELİ (VARIANTS) */}
+              {/* ================================================================= */}
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-xs font-black uppercase text-slate-700">🎲 Dinamik Ssenari Variantları (MagiForest Engine)</h3>
+                  <button type="button" onClick={() => setVariants([...variants, { values: [{ name: '$a', value: '10' }] }])} className="bg-sky-600 text-white font-bold text-[10px] px-2 py-1 rounded">+ Yeni Ssenari Əlavə Et</button>
+                </div>
+
+                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                  {variants.map((senari, sIdx) => (
+                    <div key={sIdx} className="bg-white p-3 rounded-lg border relative space-y-2">
+                      <button type="button" onClick={() => setVariants(variants.filter((_, i) => i !== sIdx))} className="absolute top-2 right-2 text-rose-500 hover:text-rose-700 text-xs font-bold">Ssenarini Sil</button>
+                      <span className="text-[10px] font-black text-slate-400">Ssenari #{sIdx + 1}</span>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {senari.values.map((v, vIdx) => (
+                          <div key={vIdx} className="border p-1.5 rounded bg-slate-50 relative group">
+                            <input type="text" value={v.name} placeholder="Dəyişən (örn: $a)" onChange={(e) => {
+                              const next = [...variants];
+                              next[sIdx].values[vIdx].name = e.target.value;
+                              setVariants(next);
+                            }} className="w-full text-[10px] p-1 border rounded font-mono font-bold text-purple-700" />
+                            <input type="text" value={v.value} placeholder="Dəyər (örn: 12)" onChange={(e) => {
+                              const next = [...variants];
+                              next[sIdx].values[vIdx].value = e.target.value;
+                              setVariants(next);
+                            }} className="w-full text-[10px] p-1 border rounded mt-1" />
+                            <button type="button" onClick={() => {
+                              const next = [...variants];
+                              next[sIdx].values = next[sIdx].values.filter((_, i) => i !== vIdx);
+                              setVariants(next);
+                            }} className="absolute -top-1 -right-1 hidden group-hover:block bg-rose-500 text-white rounded-full p-0.5 text-[8px]">X</button>
+                          </div>
+                        ))}
+                        <button type="button" onClick={() => {
+                          const next = [...variants];
+                          next[sIdx].values.push({ name: '', value: '' });
+                          setVariants(next);
+                        }} className="border border-dashed text-[10px] font-bold text-slate-400 hover:bg-slate-50 rounded flex items-center justify-center min-h-[50px]">+ Dəyişən</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
               <div className="flex justify-end gap-2 border-t pt-3 mt-auto">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="bg-slate-100 text-slate-600 font-bold text-xs px-4 py-2 rounded-xl">Ləğv Et</button>

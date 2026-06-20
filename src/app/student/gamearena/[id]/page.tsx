@@ -10,6 +10,7 @@ import { generateEngineHeader } from '@/src/utils/gameEngineUtils';
 import { useParams } from 'next/navigation';
 import { transformLevelWithRandomVariant } from '@/src/utils/transformLevelWithRandomVariant';
 import { cloneDeep } from 'lodash';
+import validateCodeRules from '@/src/utils/validateCodeRules';
 
 // 1. Frontend Parser və Animasiya Sistemi Üçün Əmrlər
 interface ExecutionStep {
@@ -64,8 +65,8 @@ interface OriginalLevelData {
   xalSistemi?: CavabXal[];   // Dinamik xal matrisi (Terminal varsa aktivləşir)
   levelPoint: number;
   hasWriteTask: boolean;
-  requiredWrites: any[];   
-  variants?: ScenarioData[]; 
+  requiredWrites: any[];
+  variants?: ScenarioData[];
 }
 
 interface LevelData {
@@ -82,7 +83,7 @@ interface LevelData {
   xalSistemi?: CavabXal[];   // Dinamik xal matrisi (Terminal varsa aktivləşir)
   levelPoint: number;
   hasWriteTask: boolean;
-  requiredWrites: any[]; 
+  requiredWrites: any[];
 
 }
 
@@ -94,26 +95,10 @@ const DEFAULT_CPP_CODE = `#include <iostream>
 using namespace std;
 
 int main() {
-    // 1. Önümüzdəki qutunu irəli itələyirik
+    
+    robot.ireli();
+    robot.ireli();
     robot.ireli(); 
-    
-    // 2. İnt tipli yazıları oxuyub toplayırıq
-    int eded1 = robot.yaziOxuInt();
-    robot.ireli();
-    int eded2 = robot.yaziOxuInt();
-    
-    // 3. Terminal xanasının üzərinə gəlirik
-    robot.ireli();
-    
-    // 4. Yeni tək parametrlə nəticəni birbaşa terminala yazırıq!
-    int cem = eded1 + eded2;
-    robot.terminalaYaz(cem); 
-    
-    // 5. Finiş qapısı açıldı! Finişə doğru gedirik
-    robot.ireli();
-    robot.ireli();
-    robot.ireli();
-    robot.ireli(); // Səviyyə tamamlandı! 🎉
 
     return 0;
 }`;
@@ -146,6 +131,8 @@ export default function RealCompilerArena() {
   const executionStackRef = useRef<ExecutionStep[]>([]);
   const lastCompiledCodeRef = useRef<string>("");
   const abortExecutionRef = useRef<boolean>(false);
+
+  const ironBoxesRef = useRef<{ [key: string]: { currentX: number, currentY: number, targetX: number, targetY: number } }>({});
 
 
   useEffect(() => {
@@ -180,6 +167,24 @@ export default function RealCompilerArena() {
         robotRef.current.targetAngle = robotRef.current.directionAngles[changedData.startDirection];
         robotRef.current.finishOpened = !changedData.mapLayout.some(row => row.includes(4));
 
+        if (changedData) {
+          const boxes: typeof ironBoxesRef.current = {};
+          for (let y = 0; y < rows; y++) {
+            for (let x = 0; x < cols; x++) {
+              const tile = changedData.mapLayout[y][x];
+              if (tile >= 21 && tile <= 29 && tile % 2 !== 0) {
+                boxes[tile] = {
+                  currentX: x * GRID_SIZE,
+                  currentY: y * GRID_SIZE,
+                  targetX: x * GRID_SIZE,
+                  targetY: y * GRID_SIZE
+                };
+              }
+            }
+          }
+          ironBoxesRef.current = boxes;
+        }
+
 
       } catch (error) {
         console.error("Data yüklənərkən xəta baş verdi:", error);
@@ -211,23 +216,49 @@ export default function RealCompilerArena() {
     popup: null as { text: string; type: 'write' | 'read'; expiresAt: number } | null,
 
     reset() {
-      if (!data) return; // Data null-dursa reset işləməsin
-      this.gridX = data.startX;
-      this.gridY = data.startY;
-      this.targetX = data.startX * GRID_SIZE + GRID_SIZE / 2;
-      this.targetY = data.startY * GRID_SIZE + GRID_SIZE / 2;
+      if (!data || !originalData) return;
+
+      const changedData = transformLevelWithRandomVariant(cloneDeep(originalData))
+
+      setData(changedData)
+
+      this.gridX = changedData.startX;
+      this.gridY = changedData.startY;
+      this.targetX = changedData.startX * GRID_SIZE + GRID_SIZE / 2;
+      this.targetY = changedData.startY * GRID_SIZE + GRID_SIZE / 2;
       this.currentX = this.targetX;
       this.currentY = this.targetY;
-      this.angle = this.directionAngles[data.startDirection];
-      this.targetAngle = this.directionAngles[data.startDirection];
+      this.angle = this.directionAngles[changedData.startDirection];
+      this.targetAngle = this.directionAngles[changedData.startDirection];
       this.isScanning = false;
       this.isWriting = false;
       this.isLookingAhead = false;
-      this.finishOpened = !data.mapLayout.some(row => row.includes(4));
+      this.finishOpened = !changedData.mapLayout.some(row => row.includes(4));
       this.currentDataType = "int";
-      setDynamicMap(JSON.parse(JSON.stringify(data.mapLayout)));
-      setXanaYazilari(JSON.parse(JSON.stringify(data.xanaYazilari)));
+      setDynamicMap(cloneDeep(changedData.mapLayout));
+      setXanaYazilari(cloneDeep(changedData.xanaYazilari));
+
+      if (changedData) {
+        const boxes: typeof ironBoxesRef.current = {};
+        for (let y = 0; y < rows; y++) {
+          for (let x = 0; x < cols; x++) {
+            const tile = changedData.mapLayout[y][x];
+            if (tile >= 21 && tile <= 29 && tile % 2 !== 0) {
+              boxes[tile] = {
+                currentX: x * GRID_SIZE,
+                currentY: y * GRID_SIZE,
+                targetX: x * GRID_SIZE,
+                targetY: y * GRID_SIZE
+              };
+            }
+          }
+        }
+        ironBoxesRef.current = boxes;
+      }
+
+      console.log("reset")
     },
+
     update() {
       if (Math.abs(this.targetX - this.currentX) > this.speed) this.currentX += (this.targetX > this.currentX) ? this.speed : -this.speed;
       else this.currentX = this.targetX;
@@ -262,6 +293,7 @@ export default function RealCompilerArena() {
 
     const render = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+
 
       const r = robotRef.current;
 
@@ -596,8 +628,47 @@ export default function RealCompilerArena() {
             ctx.restore();
           }
 
+          if (tile >= 20 && tile <= 29 && tile % 2 === 0) {
+            const padding = 8; // Düymə yerdə basıla bilən plitə kimi bir az kiçik görünsün
+            const rectX = Math.round(x * GRID_SIZE + padding);
+            const rectY = Math.round(y * GRID_SIZE + padding);
+            const rectW = Math.round(GRID_SIZE - (padding * 2));
+            const rectH = Math.round(GRID_SIZE - (padding * 2));
+
+            ctx.save();
+
+            // Düymənin əsası (Canlı Zümrüd/Firuzəyi - Aktiv hərəkət mexanizmini bildirir)
+            ctx.fillStyle = "#10b981"; // Emerald 500
+            ctx.strokeStyle = "#047857"; // Emerald 700
+            ctx.lineWidth = 2;
+
+            drawRoundedRect(ctx, rectX, rectY, rectW, rectH, 6);
+            ctx.fill();
+            ctx.stroke();
+
+            // Daxili dairə (Uşaqların hədəf alması üçün düymə mərkəzi)
+            ctx.fillStyle = "#059669";
+            ctx.beginPath();
+            ctx.arc(rectX + rectW / 2, rectY + rectH / 2, rectW / 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+          }
+
+          if (tile >= 21 && tile <= 29 && tile % 2 !== 0) {
+            const boxState = ironBoxesRef.current[tile];
+            if (boxState) {
+              // Qutunun anlıq koordinatlarını hədəfə doğru rəvan sürüşdürürük
+              boxState.currentX += (boxState.targetX - boxState.currentX) * 0.15;
+              boxState.currentY += (boxState.targetY - boxState.currentY) * 0.15;
+            }
+          }
+
           // 3. Qayda: Gizli Yazıların Görünməsi (Yalnız üstündə qutu yoxdursa)
-          if (xanaYazilari[y][x] && tile !== 2) {
+
+          const isBoxOnTop = tile === 2 || (tile >= 20 && tile <= 29 && tile % 2 == 0);
+
+          if (xanaYazilari[y][x] && !isBoxOnTop) {
             const value = xanaYazilari[y][x];
 
             // Ədədin tam mərkəz koordinatları
@@ -671,6 +742,48 @@ export default function RealCompilerArena() {
 
         }
       }
+
+      Object.keys(ironBoxesRef.current).forEach(tileStr => {
+        const tile = parseInt(tileStr, 10);
+
+        // Əgər bu qutu hazırda dynamicMap-də varsa, onu ən üstdə render et
+        // (Bununla qutunun harada olmasından asılı olmayaraq heç bir xananın altında qala bilməz)
+        const boxState = ironBoxesRef.current[tile];
+
+        if (boxState) {
+          const padding = 6;
+          const rectX = Math.round(boxState.currentX + padding);
+          const rectY = Math.round(boxState.currentY + padding);
+          const rectW = Math.round(GRID_SIZE - (padding * 2));
+          const rectH = Math.round(GRID_SIZE - (padding * 2));
+
+          ctx.save();
+          // --- Sənin yazdığın qutu dizayn kodu ---
+          const metalGrad = ctx.createLinearGradient(rectX, rectY, rectX + rectW, rectY + rectH);
+          metalGrad.addColorStop(0, "#64748b");
+          metalGrad.addColorStop(1, "#334155");
+          ctx.fillStyle = metalGrad;
+          ctx.strokeStyle = "#1e293b";
+          ctx.lineWidth = 2.5;
+          drawRoundedRect(ctx, rectX, rectY, rectW, rectH, 5);
+          ctx.fill();
+          ctx.stroke();
+
+          // Metal pərçimlər
+          ctx.fillStyle = "#cbd5e1";
+          const boltOffset = 5;
+          ctx.beginPath();
+          ctx.arc(rectX + boltOffset, rectY + boltOffset, 1.5, 0, Math.PI * 2);
+          ctx.arc(rectX + rectW - boltOffset, rectY + boltOffset, 1.5, 0, Math.PI * 2);
+          ctx.arc(rectX + boltOffset, rectY + rectH - boltOffset, 1.5, 0, Math.PI * 2);
+          ctx.arc(rectX + rectW - boltOffset, rectY + rectH - boltOffset, 1.5, 0, Math.PI * 2);
+          ctx.fill();
+
+
+
+          ctx.restore();
+        }
+      });
 
       // Robotun renderi (Süleyman tərzi şirin robot)
 
@@ -1010,9 +1123,59 @@ export default function RealCompilerArena() {
     return () => cancelAnimationFrame(animationId);
   }, [dynamicMap, xanaYazilari, data]);
 
+  const handleReset = (stop : boolean = true) => {
+    if (!originalData) return;
+    if(stop)  handleStopExecution();
+
+    const changedData = transformLevelWithRandomVariant(cloneDeep(originalData))
+
+    // Data uğurla gəldikdə əlaqədar stateləri yeniləyirik
+    setData(changedData);
+    setDynamicMap(changedData.mapLayout);
+    setXanaYazilari(changedData.xanaYazilari);
+    setTerminalLogs([
+      { type: 'system', text: `// 🌲 ${changedData.title} Aktivdir. C++ simulyasiyası gözlənilir...` }
+    ]);
+
+    // Robotun ilkin vəziyyətini dinamik gələn dataya görə nizamlayırıq
+    robotRef.current.gridX = changedData.startX;
+    robotRef.current.gridY = changedData.startY;
+    robotRef.current.targetX = changedData.startX * GRID_SIZE + GRID_SIZE / 2;
+    robotRef.current.targetY = changedData.startY * GRID_SIZE + GRID_SIZE / 2;
+    robotRef.current.currentX = robotRef.current.targetX;
+    robotRef.current.currentY = robotRef.current.targetY;
+    robotRef.current.angle = robotRef.current.directionAngles[changedData.startDirection];
+    robotRef.current.targetAngle = robotRef.current.directionAngles[changedData.startDirection];
+    robotRef.current.finishOpened = !changedData.mapLayout.some(row => row.includes(4));
+
+    if (changedData) {
+      const boxes: typeof ironBoxesRef.current = {};
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          const tile = changedData.mapLayout[y][x];
+          if (tile >= 21 && tile <= 29 && tile % 2 !== 0) {
+            boxes[tile] = {
+              currentX: x * GRID_SIZE,
+              currentY: y * GRID_SIZE,
+              targetX: x * GRID_SIZE,
+              targetY: y * GRID_SIZE
+            };
+          }
+        }
+      }
+      ironBoxesRef.current = boxes;
+    }
+
+    setSuccessSteps([]);
+    setIsTerminalExpanded(false);
+    setTerminalLogs([{ type: 'system', text: '// Xəritə sıfırlandı. Yeni həll kodunu yaza bilərsiniz.' }]);
+
+    return changedData;
+  };
+
   // ANİMASİYA VE HƏRƏKƏT SİNYALLARININ İCRA OLUNMASI
   const startRobotMovement = async (steps: ExecutionStep[]) => {
-    if(!data) return;
+    if (!data || !dynamicMap) return;
     setIsRunning(true);
     setSuccessSteps([]);
     abortExecutionRef.current = false;
@@ -1035,8 +1198,18 @@ export default function RealCompilerArena() {
         // Sərhəd yoxlaması (Xəritədən kənara çıxma xətalarının qarşısını alır)
         if (ny >= 0 && ny < currentMapState.length && nx >= 0 && nx < currentMapState[0].length) {
 
+          const nextTile = currentMapState[ny][nx];
+          const isIronBox = nextTile >= 21 && nextTile <= 29 && nextTile % 2 !== 0;
+
+          let canMove = true; // Robotun irəli gedib-gedə bilməyəcəyini idarə edən bayraq
+
+          // 1. 🧱 SABİT DİVAR YOXLANIŞI
+          if (nextTile === 1 || isIronBox) {
+            canMove = false; // Divar və ya ağır dəmir qutu varsa, irəli gedə bilməz
+          }
+
           // 📦 Əgər qarşıda İTƏLƏNƏ BİLƏN QUTU (2) varsa
-          if (currentMapState[ny][nx] === 2) {
+          if (nextTile === 2) {
             // Qutudan sonrakı növbəti xana
             let bnx = nx + Math.round(Math.cos(r.targetAngle));
             let bny = ny + Math.round(Math.sin(r.targetAngle));
@@ -1051,14 +1224,27 @@ export default function RealCompilerArena() {
                 currentMapState[ny][nx] = 0;   // Köhnə yeri boşalır
                 setDynamicMap([...currentMapState]); // Canvas interfeysini yeniləyirik
               }
+              else {
+                canMove = false; // Qutunun önü doludur (məsələn divardır), qutu yerindən tərpənmədi, robot da qaldı
+              }
+            }
+            else {
+              canMove = false; // Qutunun önü doludur (məsələn divardır), qutu yerindən tərpənmədi, robot da qaldı
             }
           }
 
           // Robotun daxili hərəkət hədəflərini yeniləyirik
-          r.gridX = nx;
-          r.gridY = ny;
-          r.targetX = nx * GRID_SIZE + GRID_SIZE / 2;
-          r.targetY = ny * GRID_SIZE + GRID_SIZE / 2;
+          if (canMove) {
+            // Əgər yol təmizdirsə və ya qutu uğurla itələnibsə, robot irəliləyir
+            r.gridX = nx;
+            r.gridY = ny;
+            r.targetX = nx * GRID_SIZE + GRID_SIZE / 2;
+            r.targetY = ny * GRID_SIZE + GRID_SIZE / 2;
+          } else {
+            // Əgər qarşısı bloklanıbsa, robot yerində qalır amma hədəf koordinatını öz cari yerinə set edirik ki, glitch olmasın
+            r.targetX = r.gridX * GRID_SIZE + GRID_SIZE / 2;
+            r.targetY = r.gridY * GRID_SIZE + GRID_SIZE / 2;
+          }
         }
 
       } else if (stepData.cmd === 'left') {
@@ -1072,7 +1258,7 @@ export default function RealCompilerArena() {
         // stepData.cmd daxilində tam sətir və ya əlavə bir stepData.value ilə ötürdüyünüzü fərz edərək parslayırıq:
 
         const logParts = stepData.cmd.split('|');
-        console.log("dsvdv",logParts)
+        console.log("dsvdv", logParts)
         let targetPortalID = 11; // Default fallback
 
         if (logParts.length > 1) {
@@ -1162,6 +1348,53 @@ export default function RealCompilerArena() {
         r.isWriting = false;
       }
 
+      else if (stepData.cmd.startsWith('iron_box_move')) {
+        const parts = stepData.cmd.split('|');
+
+        if (parts.length > 2) {
+          const ironBoxID = parseInt(parts[1], 10);
+          const coords = parts[2].split('->'); // ["2,3", "2,4"]
+
+          const [fromX, fromY] = coords[0].split(',').map(Number);
+          const [toX, toY] = coords[1] ? coords[1].split(',').map(Number) : parts[2].split('->')[1].split(',').map(Number);
+
+          // 🚀 1. Ref üzərində hədəf nöqtəni təyin edirik (Canvas bunu görüb sürüşdürməyə başlayır)
+          if (ironBoxesRef.current[ironBoxID]) {
+            ironBoxesRef.current[ironBoxID].targetX = toX * GRID_SIZE;
+            ironBoxesRef.current[ironBoxID].targetY = toY * GRID_SIZE;
+          }
+
+          // ⏳ Animasiyanın yarıya qədər gəlməsini (rəvan keçidi) gözləyirik
+          await new Promise(res => setTimeout(res, 250));
+
+          // 🗺️ 2. İndi xəritə state-ini yeniləyirik ki, loqika yerinə otursun
+          if (toY >= 0 && toY < currentMapState.length && toX >= 0 && toX < currentMapState[0].length) {
+            const originalTile = data.mapLayout[fromY]?.[fromX];
+            const isButton = originalTile >= 20 && originalTile <= 29 && originalTile % 2 === 0;
+
+            currentMapState[fromY][fromX] = isButton ? originalTile : 0;
+            currentMapState[toY][toX] = ironBoxID;
+
+            setDynamicMap([...currentMapState]);
+          }
+
+          // 💾 3. Qutu ilə bərabər yazını da sürüşdürürük
+          setXanaYazilari(prev => {
+            const nextWrites = { ...prev };
+            const currentText = nextWrites[fromY]?.[fromX];
+            if (currentText !== undefined && currentText !== "") {
+              if (!nextWrites[toY]) nextWrites[toY] = {};
+              nextWrites[toY][toX] = currentText;
+              if (nextWrites[fromY]) delete nextWrites[fromY][fromX];
+            }
+            return nextWrites;
+          });
+
+          // Animasiyanın tam tamamlanması üçün qalan müddəti gözləyirik
+          await new Promise(res => setTimeout(res, 150));
+        }
+      }
+
       // Robot hədəf nöqtəsinə çatana qədər dövrü bloklayırıq (Axıcı animasiya üçün)
       while (r.isBusy()) {
         if (abortExecutionRef.current) break;
@@ -1211,17 +1444,42 @@ export default function RealCompilerArena() {
 
   // KOMPİLYASİYA FUNKSİYASI (Dinamik C++ Kitabxanası bura qoşulur)
   const handleCompileAndRun = async () => {
-    if(!data || !xanaYazilari) return;
+    if (!data || !xanaYazilari) return;
+    const changedData = handleReset(false)
     setIsTerminalExpanded(true); // Terminal panelini vizual olaraq açırıq
     setIsRunning(true);
     abortExecutionRef.current = false;
     setTerminalLogs([{ type: 'system', text: '⚡ Sehrli Meşə mühərriki başladılır...' }]);
 
-    const changedData = transformLevelWithRandomVariant(cloneDeep(originalData))
-
-    setData(changedData)
-    setXanaYazilari(changedData.xanaYazilari)
   
+    if (changedData.rules) {
+      // Mongoose Map tipini təmiz JS obyektinə çeviririk (əgər toJSON olunmayıbsa sığorta üçün)
+      let maxUsageObj = {};
+      if (changedData.rules.maxUsage) {
+        maxUsageObj = typeof changedData.rules.maxUsage.get === 'function'
+          ? Object.fromEntries(changedData.rules.maxUsage)
+          : changedData.rules.maxUsage;
+      }
+
+      // Funksiyaya göndərəcəyimiz təmizlənmiş qayda obyekti
+      const normalizedRules = {
+        required: changedData.rules.required || [],
+        forbidden: changedData.rules.forbidden || [],
+        maxUsage: maxUsageObj
+      };
+
+      const ruleValidationError = validateCodeRules(code, normalizedRules);
+
+      if (ruleValidationError) {
+        setTerminalLogs([
+          { type: 'error', text: '🛑 [MİSSİYA ŞƏRTİ POZULUB]:' },
+          { type: 'error', text: ruleValidationError }
+        ]);
+        setIsRunning(false);
+        return; // ⛔ Kodun kompilyasiyaya getməsini tamamilə dayandırırıq!
+      }
+    }
+
     const engineHeader = generateEngineHeader({
       mapLayout: changedData.mapLayout,
       xanaYazilari: changedData.xanaYazilari,
@@ -1311,6 +1569,13 @@ export default function RealCompilerArena() {
             value: valueToLength, // Şagirdin yazdığı dəyər (məsələn: "1" və ya "Salam")
             raw: `robot.yaziYaz(${valueToLength})`
           });
+        } else if (line.startsWith("ANIMATION: iron_box_move|")) {
+          const cmdContent = line.replace("ANIMATION: ", ""); // "iron_box_move|21|2,3->2,4"
+          console.log("bura", cmdContent)
+          parsedSteps.push({
+            cmd: cmdContent, // Bütöv şəkildə cmd daxilinə gedir ki, startRobotMovement parslaya bilsin
+            raw: `⚙️ Düymə aktivləşdi: Dəmir qutu hərəkət edir.`
+          });
         }
       });
 
@@ -1340,15 +1605,8 @@ export default function RealCompilerArena() {
     setActiveStepIndex(null);
   };
 
-  const handleReset = () => {
-    if(!data) return;
-    handleStopExecution();
-    robotRef.current.reset();
-    setSuccessSteps([]);
-    setIsTerminalExpanded(false);
-    setTerminalLogs([{ type: 'system', text: '// Xəritə sıfırlandı. Yeni həll kodunu yaza bilərsiniz.' }]);
-    setXanaYazilari(data.xanaYazilari)
-  };
+
+
 
   if (!data) {
     return (
@@ -1386,7 +1644,7 @@ export default function RealCompilerArena() {
                 <span className="text-xs font-mono font-black text-slate-500">solution.cpp</span>
                 <span className="text-[10px] bg-amber-100 text-amber-800 font-black px-2.5 py-0.5 rounded-full uppercase">C++ 17</span>
               </div>
-              <div className="flex-1 overflow-auto bg-white task-editor">
+              <div className="flex-1 max-h-3/4 overflow-auto bg-white task-editor">
                 <ReactCodeMirror
                   value={code}
                   height="100%"

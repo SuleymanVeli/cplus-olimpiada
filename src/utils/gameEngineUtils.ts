@@ -1,62 +1,62 @@
 interface CavabXal {
-  cavab: string; // Strukturda hər şeyi string saxlayırıq ki, həm "45", həm "MagiForest" tutulsun
-  verilecekXal: number;
-  mesaj: string;
+    cavab: string; // Strukturda hər şeyi string saxlayırıq ki, həm "45", həm "MagiForest" tutulsun
+    verilecekXal: number;
+    mesaj: string;
 }
 
 interface RequiredWrite {
-  x: number;
-  y: number;
-  expected: string;
+    x: number;
+    y: number;
+    expected: string;
 }
 
-interface LevelData { 
-  levelPoint: number;
-  startX: number;
-  startY: number;
-  mapLayout: number[][];
-  xanaYazilari: string[][];
-  xanaTipleri: string[][]; // Portalları təhlükəsiz massiv formatına saldıq
-  xalSistemi?: CavabXal[]; // Terminal xal sistemi
-  hasWriteTask: boolean;
-  requiredWrites: RequiredWrite[];
-  startDirection: string;
+interface LevelData {
+    levelPoint: number;
+    startX: number;
+    startY: number;
+    mapLayout: number[][];
+    xanaYazilari: string[][];
+    xanaTipleri: string[][]; // Portalları təhlükəsiz massiv formatına saldıq
+    xalSistemi?: CavabXal[]; // Terminal xal sistemi
+    hasWriteTask: boolean;
+    requiredWrites: RequiredWrite[];
+    startDirection: string;
 }
 
 
 // Matrisi C++ formatında sətirlərə çevirmək üçün
 const matrixToCppString = (matrix: any[][], isString: boolean = false): string => {
-  return matrix.map(row => {
-    const formattedRow = row.map(cell => isString ? `"${cell}"` : cell).join(", ");
-    return `      {${formattedRow}}`;
-  }).join(",\n");
+    return matrix.map(row => {
+        const formattedRow = row.map(cell => isString ? `"${cell}"` : cell).join(", ");
+        return `      {${formattedRow}}`;
+    }).join(",\n");
 };
 
 // Xal sistemini C++ struct massivinə çevirən funksiya
 const xalSistemiToCpp = (xalSistemi: CavabXal[]): string => {
-  return xalSistemi.map(item => `      {"${item.cavab}", ${item.verilecekXal}, "${item.mesaj}"}`).join(",\n");
+    return xalSistemi.map(item => `      {"${item.cavab}", ${item.verilecekXal}, "${item.mesaj}"}`).join(",\n");
 };
 
 const requiredWritesToCpp = (writes: RequiredWrite[]): string => {
-  return writes.map(item => `      {${item.x}, ${item.y}, "${item.expected}", false}`).join(",\n");
+    return writes.map(item => `      {${item.x}, ${item.y}, "${item.expected}", false}`).join(",\n");
 };
 
 export const generateEngineHeader = (levelData: LevelData): string => {
-  const cppLayoutStr = matrixToCppString(levelData.mapLayout, false);
-  const cppYazilarStr = matrixToCppString(levelData.xanaYazilari, true);
-  const cppTiplerStr = matrixToCppString(levelData.xanaTipleri, true);
+    const cppLayoutStr = matrixToCppString(levelData.mapLayout, false);
+    const cppYazilarStr = matrixToCppString(levelData.xanaYazilari, true);
+    const cppTiplerStr = matrixToCppString(levelData.xanaTipleri, true);
 
-  const xalSistemiArray = levelData.xalSistemi || [];
-  const xalSistemiLength = xalSistemiArray.length;
-  const cppXalSistemiStr = xalSistemiLength > 0 ? xalSistemiToCpp(xalSistemiArray) : "";
+    const xalSistemiArray = levelData.xalSistemi || [];
+    const xalSistemiLength = xalSistemiArray.length;
+    const cppXalSistemiStr = xalSistemiLength > 0 ? xalSistemiToCpp(xalSistemiArray) : "";
 
-  const writesArray = levelData.requiredWrites || [];
-  const writesLength = writesArray.length;
-  const cppRequiredWritesStr = writesLength > 0 ? requiredWritesToCpp(writesArray) : "";
+    const writesArray = levelData.requiredWrites || [];
+    const writesLength = writesArray.length;
+    const cppRequiredWritesStr = writesLength > 0 ? requiredWritesToCpp(writesArray) : "";
 
-  const hasTerminal = levelData.mapLayout.some(row => row.includes(4));
+    const hasTerminal = levelData.mapLayout.some(row => row.includes(4));
 
-  return `#include <iostream>
+    return `#include <iostream>
 #include <string>
 #include <vector>
 
@@ -159,6 +159,11 @@ ${cppRequiredWritesStr.length > 0 ? cppRequiredWritesStr : "      {-1, -1, \"\",
                 return;
             }
 
+            if (qarsidakiObyekt >= 21 && qarsidakiObyekt <= 29 && qarsidakiObyekt % 2 != 0) {
+                cout << "XETA: Dəmir qutu çox ağırdır, onu itələmək və ya üstündən keçmək olmaz!" << endl;
+                return;
+            }
+
             if (qarsidakiObyekt == 2) {
                 int boxNextX = nextX, boxNextY = nextY;
                 if (istiqamet == "RIGHT")      { boxNextX++; }
@@ -201,6 +206,70 @@ ${cppRequiredWritesStr.length > 0 ? cppRequiredWritesStr : "      {-1, -1, \"\",
                 }
             }
 
+            // 🔹 Düymə Mexanikası (20-29 aralığındakı cüt ədədlər düymədir)
+            if (cariXana >= 20 && cariXana <= 29 && cariXana % 2 == 0) {
+                int hedefQutuID = cariXana + 1; // 20 -> 21 (Dəmir qutu)
+                
+                // Düymənin üzərindəki yazını oxuyuruq (Məsələn: "LEFT" və ya "RIGHT")
+                // Sən bura variantlardan real istiqaməti inyeksiya edəcəksən!
+                string qutuIstiqameti = xanaYazilari[y][x]; 
+
+                int qutuCariX = -1, qutuCariY = -1;
+                bool qutuTapildi = false;
+
+                // 1. Xəritədən dəmir qutunun hal-hazırda harada olduğunu tapırıq
+                for (int h = 0; h < MAP_HEIGHT; h++) {
+                    for (int w = 0; w < MAP_WIDTH; w++) {
+                        if (xerite[h][w] == hedefQutuID) {
+                            qutuCariX = w;
+                            qutuCariY = h;
+                            qutuTapildi = true;
+                            break;
+                        }
+                    }
+                    if (qutuTapildi) break;
+                }
+
+                if (qutuTapildi && (qutuIstiqameti == "RIGHT" || qutuIstiqameti == "LEFT" || qutuIstiqameti == "UP" || qutuIstiqameti == "DOWN")) {
+                    int qutuNextX = qutuCariX;
+                    int qutuNextY = qutuCariY;
+
+                    // 2. Yazıdan gələn istiqamətə görə növbəti koordinatı təyin edirik
+                    if (qutuIstiqameti == "RIGHT")      { qutuNextX++; }
+                    else if (qutuIstiqameti == "LEFT")  { qutuNextX--; }
+                    else if (qutuIstiqameti == "UP")    { qutuNextY--; }
+                    else if (qutuIstiqameti == "DOWN")  { qutuNextY++; }
+
+                    // 3. TAM TƏHLÜKƏSİZLİK YOXLANIŞLARI (Sərhəd, Divar, Digər Obyektlər)
+                    // Sərhəd yoxlanışı:
+                    if (qutuNextX >= 0 && qutuNextX < MAP_WIDTH && qutuNextY >= 0 && qutuNextY < MAP_HEIGHT) {
+                        
+                        int qutuQarsisi = xerite[qutuNextY][qutuNextX];
+                        
+                        // Robotun öz yerini yoxlayırıq (Qutu robotun üstünə gedə bilməz)
+                        bool robotVar = (qutuNextX == x && qutuNextY == y);
+
+                        // Dəmir qutu YALNIZ boş xanaya (0) və ya başqa bir düymənin (20-29 cütləri) üzərinə gedə bilər.
+                        // Divara (1), digər qutuya (2) və ya Finişə (5) dəyə bilməz.
+                        bool yolAciqdir = (qutuQarsisi == 0 || (qutuQarsisi >= 20 && qutuQarsisi <= 29 && qutuQarsisi % 2 == 0));
+
+                        if (yolAciqdir && !robotVar) {
+                            // 3. Xəritədə qutunun yerini yeniləyirik
+                            xerite[qutuCariY][qutuCariX] = 0; 
+                            xerite[qutuNextY][qutuNextX] = hedefQutuID; 
+                            
+                            // Frontend animasiya üçün log
+                            cout << "ANIMATION: iron_box_move|" << hedefQutuID << "|" << qutuCariX << "," << qutuCariY << "->" << qutuNextX << "," << qutuNextY << endl;
+                        } else {
+                            // Robot düyməyə təkrar-təkrar bassa və qutu divara dirənsə, bura girəcək
+                            cout << "KONSOL: ⚠️ Dəmir qutu hərəkət edə bilmir, önü bloklanıb!" << endl;
+                        }
+                    } else {
+                        cout << "KONSOL: ⚠️ Dəmir qutu xəritə xaricinə çıxa bilməz!" << endl;
+                    }
+                }
+            }
+
             if (xerite[y][x] == 5) {
                 if (finishAciq) {
                     cout << "KONSOL: Təbriklər! Səviyyə tamamlandı! 🎉 [Yekun Xalınız: " << qazanilanXal << "]" << endl;
@@ -240,6 +309,8 @@ ${cppRequiredWritesStr.length > 0 ? cppRequiredWritesStr : "      {-1, -1, \"\",
             int obyekt = xerite[nextY][nextX];
             if (obyekt == 1) return "divar";
             if (obyekt == 2) return "qutu";
+            if (obyekt == 5) return "cixis";
+            if (obyekt >= 21 && obyekt <= 29 && obyekt % 2 != 0) return "demir_qutu";
             if (xanaTipleri[nextY][nextX] != "") return "yazi";
             return "";
         }

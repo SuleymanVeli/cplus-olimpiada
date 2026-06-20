@@ -22,6 +22,22 @@ const SenariSchema = new Schema({
   values: [VariantSchema] // [ {ad: "$a", deyer: "10"}, {ad: "$b", deyer: "20"}, {ad: "$cavab", deyer: "30"} ]
 }, { _id: false });
 
+const CodeRulesSchema = new Schema({
+  // Mütləq yazılmalı olan komandalar: ["if", "while", "robot.sola()"]
+  required: { type: [String], default: [] },
+  
+  // Qadağan olunmuş komandalar: ["for", "robot.saga()"]
+  forbidden: { type: [String], default: [] },
+  
+  // Dinamik limitlər üçün Map tipi əladır. 
+  // Məlumat bazasında belə oturacaq: { "robot.ireli()": 3, "while": 1 }
+  maxUsage: {
+    type: Map,
+    of: Number,
+    default: {}
+  }
+}, { _id: false });
+
 const LevelSchema = new Schema({
   topicId: {
     type: Schema.Types.ObjectId,
@@ -46,6 +62,7 @@ const LevelSchema = new Schema({
   hasWriteTask: { type: Boolean, default: false },
   requiredWrites: [RequiredWriteSchema],
   xalSistemi: [CavabXalSchema],
+  rules: { type: CodeRulesSchema, default: null },
   order: { type: Number, required: true }
 }, { timestamps: true });
 

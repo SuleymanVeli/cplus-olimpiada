@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
 
     // Gələn topicId-yə görə levelləri tapır və 'order'-ə görə sıralayır
     const levels = await Level.find({ topicId }).sort({ order: 1 });
-    
+
     return NextResponse.json(levels, { status: 200 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -54,7 +54,11 @@ export async function POST(req: NextRequest) {
       hasWriteTask: levelData.hasWriteTask,
       requiredWrites: levelData.requiredWrites || [],
       xalSistemi: levelData.xalSistemi || [],
-      order: levelData.order || 1
+      order: levelData.order || 1,
+
+      // 🚀 YENİ ƏLAVƏLƏR
+      variants: levelData.variants || [],
+      rules: levelData.rules || null
     });
 
     await newLevel.save();
@@ -98,7 +102,11 @@ export async function PUT(req: NextRequest) {
         hasWriteTask: levelData.hasWriteTask,
         requiredWrites: levelData.requiredWrites,
         xalSistemi: levelData.xalSistemi,
-        order: levelData.order
+        order: levelData.order,
+
+        // 🚀 YENİ ƏLAVƏLƏR
+        variants: levelData.variants,
+        rules: levelData.rules
       },
       { new: true, runValidators: true }
     );
