@@ -70,6 +70,9 @@ interface OriginalLevelData {
   hasWriteTask: boolean;
   requiredWrites: any[];
   variants?: ScenarioData[];
+  isUnlocked: boolean;
+  previousBestCode: string;
+  help: string;
 }
 
 interface LevelData {
@@ -87,8 +90,8 @@ interface LevelData {
   levelPoint: number;
   hasWriteTask: boolean;
   requiredWrites: any[];
-  order: number
-
+  order: number;
+  help: number;
 }
 
 const GRID_SIZE = 60;
@@ -100,10 +103,8 @@ using namespace std;
 
 int main() {
     
-    robot.ireli();
-    robot.ireli();
-    robot.ireli(); 
-
+   
+    
     return 0;
 }`;
 
@@ -138,6 +139,10 @@ export default function RealCompilerArena() {
   const [leftWidth, setLeftWidth] = useState(55); // Faizlə oyun sahəsinin eni
   const [isResizing, setIsResizing] = useState(false);
 
+  const [nextLevel, setNextLevel] = useState();
+
+  const [isHelpExpanded, setIsHelpExpanded] = useState(false);
+
   // Meşə Heyvanı Məntiqi (order-ə görə dinamik seçilir)
   const assignedAnimal = animalsData[(data?.order || 0) % animalsData.length];
 
@@ -152,14 +157,23 @@ export default function RealCompilerArena() {
 
   useEffect(() => {
 
-    if (!id) return;
+    console.log("bura 1 effekt")
+
+    if (!id || !userData) return;
     const fetchLevelData = async () => {
       try {
         // API endpoint-inizi bura yazın (məsələn: '/api/level' və ya xarici URL)
-        const response = await fetch(`/api/topics/${id}`);
+        const response = await fetch(`/api/topics/${id}?userId=${userData?._id}`);
         const { data }: { data: OriginalLevelData } = await response.json();
 
+        // if (data?.isUnlocked === false) {
+        //   navigateTo("/student/gamearena");
+        //   return;
+        // }
+
         setOriginalData(data);
+
+        setCode(data?.previousBestCode || DEFAULT_CPP_CODE)
 
         const changedData = transformLevelWithRandomVariant(cloneDeep(data))
 
@@ -212,7 +226,7 @@ export default function RealCompilerArena() {
     };
 
     fetchLevelData();
-  }, [id]);
+  }, [id, userData]);
 
 
   // Robotun fiziki və vizual obyekti
@@ -235,54 +249,54 @@ export default function RealCompilerArena() {
     currentDataType: "int",
     popup: null as { text: string; type: 'write' | 'read'; expiresAt: number } | null,
 
-    reset() {
-      if (!data || !originalData) return;
+    // reset() {
+    //   if (!data || !originalData) return;
 
-      const changedData = transformLevelWithRandomVariant(cloneDeep(originalData))
+    //   const changedData = transformLevelWithRandomVariant(cloneDeep(originalData))
 
-      setData(changedData)
+    //   setData(changedData)
 
-      this.gridX = changedData.startX;
-      this.gridY = changedData.startY;
-      this.targetX = changedData.startX * GRID_SIZE + GRID_SIZE / 2;
-      this.targetY = changedData.startY * GRID_SIZE + GRID_SIZE / 2;
-      this.currentX = this.targetX;
-      this.currentY = this.targetY;
-      this.angle = this.directionAngles[changedData.startDirection];
-      this.targetAngle = this.directionAngles[changedData.startDirection];
-      this.isScanning = false;
-      this.isWriting = false;
-      this.isLookingAhead = false;
-      this.finishOpened = !changedData.mapLayout.some(row => row.includes(4));
-      this.currentDataType = "int";
-      setDynamicMap(cloneDeep(changedData.mapLayout));
-      setXanaYazilari(cloneDeep(changedData.xanaYazilari));
+    //   this.gridX = changedData.startX;
+    //   this.gridY = changedData.startY;
+    //   this.targetX = changedData.startX * GRID_SIZE + GRID_SIZE / 2;
+    //   this.targetY = changedData.startY * GRID_SIZE + GRID_SIZE / 2;
+    //   this.currentX = this.targetX;
+    //   this.currentY = this.targetY;
+    //   this.angle = this.directionAngles[changedData.startDirection];
+    //   this.targetAngle = this.directionAngles[changedData.startDirection];
+    //   this.isScanning = false;
+    //   this.isWriting = false;
+    //   this.isLookingAhead = false;
+    //   this.finishOpened = !changedData.mapLayout.some(row => row.includes(4));
+    //   this.currentDataType = "int";
+    //   setDynamicMap(cloneDeep(changedData.mapLayout));
+    //   setXanaYazilari(cloneDeep(changedData.xanaYazilari));
 
 
 
-      if (changedData) {
+    //   if (changedData) {
 
-        const cols = changedData?.mapLayout[0]?.length || 10;
-        const rows = changedData?.mapLayout?.length || 5;
-        const boxes: typeof ironBoxesRef.current = {};
-        for (let y = 0; y < rows; y++) {
-          for (let x = 0; x < cols; x++) {
-            const tile = changedData.mapLayout[y][x];
-            if (tile >= 21 && tile <= 29 && tile % 2 !== 0) {
-              boxes[tile] = {
-                currentX: x * GRID_SIZE,
-                currentY: y * GRID_SIZE,
-                targetX: x * GRID_SIZE,
-                targetY: y * GRID_SIZE
-              };
-            }
-          }
-        }
-        ironBoxesRef.current = boxes;
-      }
+    //     const cols = changedData?.mapLayout[0]?.length || 10;
+    //     const rows = changedData?.mapLayout?.length || 5;
+    //     const boxes: typeof ironBoxesRef.current = {};
+    //     for (let y = 0; y < rows; y++) {
+    //       for (let x = 0; x < cols; x++) {
+    //         const tile = changedData.mapLayout[y][x];
+    //         if (tile >= 21 && tile <= 29 && tile % 2 !== 0) {
+    //           boxes[tile] = {
+    //             currentX: x * GRID_SIZE,
+    //             currentY: y * GRID_SIZE,
+    //             targetX: x * GRID_SIZE,
+    //             targetY: y * GRID_SIZE
+    //           };
+    //         }
+    //       }
+    //     }
+    //     ironBoxesRef.current = boxes;
+    //   }
 
-      console.log("reset")
-    },
+    //   console.log("reset")
+    // },
 
     update() {
       if (Math.abs(this.targetX - this.currentX) > this.speed) this.currentX += (this.targetX > this.currentX) ? this.speed : -this.speed;
@@ -746,34 +760,59 @@ export default function RealCompilerArena() {
 
             ctx.save();
 
-            // --- 1. SEHRLİ VƏ PARLAQ FON RƏNGLƏRİ (Light & Pastel Magic) ---
+            // --- 1. DİNAMİK OPACITY (Yox olub qayıtma animasiyası üçün) ---
+            // Zaman asılılığı ilə 0.2 və 0.85 arasında yumşaq dalğalanma yaradır
+            const time = Date.now() * 0.001;
+            const pulseOpacity = 0.1 + Math.abs(Math.sin(time)) * 0.35;
+
+            // --- 2. FONUN RENDERINGİ ---
             if (!isFilled) {
-              // 💤 SÖNÜK GÖZLƏMƏ VƏZİYYƏTİ: Şirin, sehirli və yumşaq pastel bənövşəyi fon
-              ctx.fillStyle = "#faf5ff"; // Çox açıq, təmiz lavanda/bənövşəyi fon
+              // 💤 GÖZLƏMƏ VƏZİYYƏTİ: Şirin, sehirli pastel narıncı fon
+              ctx.fillStyle = "#fff";
               drawRoundedRect(ctx, x * GRID_SIZE + 6, y * GRID_SIZE + 6, GRID_SIZE - 12, GRID_SIZE - 12, 6);
             } else {
               ctx.fillStyle = isCorrect ? "#e6f4ea" : "#fce8e6";
               drawRoundedRect(ctx, x * GRID_SIZE + 6, y * GRID_SIZE + 6, GRID_SIZE - 12, GRID_SIZE - 12, 6);
             }
 
-            // --- 2. YAZILARIN PARLAQ VƏ OXUNAN RENDERINGİ ---
+            // --- 3. HƏFİF DASHED ROUNDED BORDER ƏLAVƏSİ ---
+            if (!isFilled) {
+              ctx.strokeStyle = "#ea580c"; // Parlaq narıncı xətlər
+              ctx.lineWidth = 1;
+              ctx.setLineDash([4, 4]);     // Kəsik-kəsik effekt [çizgi, boşluq]
+
+              // Xəttin də yumşaq şəkildə parıldaması üçün qlobal alpha-nı tənzimləyirik
+              // ctx.globalAlpha = pulseOpacity;
+
+              // Kənarlardan 7px içəridə şirin dashed border çəkirik
+              ctx.beginPath();
+              // Əgər drawRoundedRect funksiyanız birbaşa fill/stroke etmirsə, sadəcə path yaradırsa istifadə edin:
+              drawRoundedRect(ctx, x * GRID_SIZE + 7, y * GRID_SIZE + 7, GRID_SIZE - 14, GRID_SIZE - 14, 6);
+              ctx.stroke();
+
+              ctx.setLineDash([]); // Digər elementlərə təsir etməməsi üçün sıfırlayırıq
+              ctx.globalAlpha = 1.0; // Alpha-nı bərpa edirik
+            }
+
+            // --- 4. YAZILARIN RENDERINGİ ---
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
 
             if (!isFilled) {
-              // 💬 PLACEHOLDER YAZI: Diqqət çəkən amma gözü yormayan bənövşəyi/boz yazı
-              ctx.font = "bold 11px monospace";
-              ctx.fillStyle = "#a855f7"; // Canlı bənövşəyi placeholder
+              // 💬 PLACEHOLDER YAZI: Həfif görünən və yox olub qayıdan yazı
+              ctx.font = "bold 13px monospace";
+              ctx.fillStyle = "#ea580c";
 
-              // Şagird bilsin ki, bura nə yazılmalıdır (Məsələn: ? və ya gözlənilən hədəf)
+              // Yazıya animasiyalı şəffaflığı tətbiq edirik
+              ctx.globalAlpha = pulseOpacity;
               ctx.fillText(writeTask.expected, cellX + GRID_SIZE / 2, cellY + GRID_SIZE / 2);
+              ctx.globalAlpha = 1.0;
 
             } else {
-              // 🔥 REAL YAZI: Kontrastı yüksək, uşaqların dərhal oxuya biləcəyi tünd proqramçı şrifti
+              // 🔥 REAL YAZI: Kontrastı yüksək, düzgünlük rənginə uyğun
               ctx.font = "bold 14px monospace";
-              ctx.fillStyle = isCorrect ? "#137333" : "#c5221f"; // Yaşıl və ya Qırmızı tünd mətn
+              ctx.fillStyle = isCorrect ? "#137333" : "#c5221f";
 
-              // Yazını bir az daha qabartmaq üçün xəfıf ağ kölgə (şirin görünsün deyə)
               ctx.shadowBlur = 4;
               ctx.shadowColor = "#ffffff";
 
@@ -1166,9 +1205,13 @@ export default function RealCompilerArena() {
     return () => cancelAnimationFrame(animationId);
   }, [dynamicMap, xanaYazilari, data]);
 
+  console.log(xanaYazilari)
+
   const handleReset = (stop: boolean = true) => {
     if (!originalData) return;
     if (stop) handleStopExecution();
+
+    console.log("bura reset")
 
     const changedData = transformLevelWithRandomVariant(cloneDeep(originalData))
 
@@ -1216,9 +1259,34 @@ export default function RealCompilerArena() {
     return changedData;
   };
 
+  const handleLevelSuccess = async () => {
+    // 1. Konfetti falan partlatdığın yer
+
+    // 2. API-a progressi göndəririk
+    try {
+      const response = await fetch('/api/topics/progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: userData?._id,          // Şagirdin ID-si
+          levelId: data?._id,             // Cari mərhələnin ID-si
+          earnedPoints: data?.levelPoint, // Qazandığı maksimal bal
+          bestCode: code                  // Redaktorda yazdığı C++ kodu
+        })
+      });
+
+      const resData = await response.json();
+      if (resData.success) {
+        setNextLevel(resData?.data?.nextLevelId || "")
+      }
+    } catch (err) {
+      console.error("Progress yadda saxlanarkən xəta yarandı:", err);
+    }
+  };
+
   // ANİMASİYA VE HƏRƏKƏT SİNYALLARININ İCRA OLUNMASI
-  const startRobotMovement = async (steps: ExecutionStep[]) => {
-    if (!data || !dynamicMap) return;
+  const startRobotMovement = async (steps: ExecutionStep[], changedData: LevelData) => {
+    if (!data || !dynamicMap || !xanaYazilari) return;
     setIsRunning(true);
     setSuccessSteps([]);
     abortExecutionRef.current = false;
@@ -1226,7 +1294,9 @@ export default function RealCompilerArena() {
     if (!r) return;
 
     // Local xəritə kopyası (Animasiya zamanı qutuların yerini vizual sürüşdürmək üçün)
-    let currentMapState = cloneDeep(dynamicMap);
+    let currentMapState = cloneDeep(changedData.mapLayout);
+
+    let currentXanaYazilari = cloneDeep(changedData.xanaYazilari);
 
     for (let i = 0; i < steps.length; i++) {
       if (abortExecutionRef.current) break;
@@ -1379,12 +1449,11 @@ export default function RealCompilerArena() {
         };
 
         // 📝 Mövcud yazı state-ini kopyalayırıq və robotun durduğu koordinata yazını daxil edirik
-        setXanaYazilari(prev => {
-          const nextWrites = { ...prev };
-          if (!nextWrites[targetY]) nextWrites[targetY] = {};
-          nextWrites[targetY][targetX] = writeValue;
-          return nextWrites;
-        });
+        if (!currentXanaYazilari[targetY]) currentXanaYazilari[targetY] = [];
+        currentXanaYazilari[targetY][targetX] = writeValue;
+
+        // 🚀 2. Sonra vizual interfeys (React render) üçün dövləti yeniləyirik
+        setXanaYazilari(cloneDeep(currentXanaYazilari));
 
         // Animasiyanın tamamlanması üçün gözləmə müddəti
         await new Promise(res => setTimeout(res, 800));
@@ -1422,16 +1491,7 @@ export default function RealCompilerArena() {
           }
 
           // 💾 3. Qutu ilə bərabər yazını da sürüşdürürük
-          setXanaYazilari(prev => {
-            const nextWrites = { ...prev };
-            const currentText = nextWrites[fromY]?.[fromX];
-            if (currentText !== undefined && currentText !== "") {
-              if (!nextWrites[toY]) nextWrites[toY] = {};
-              nextWrites[toY][toX] = currentText;
-              if (nextWrites[fromY]) delete nextWrites[fromY][fromX];
-            }
-            return nextWrites;
-          });
+          setXanaYazilari(cloneDeep(currentXanaYazilari));
 
           // Animasiyanın tam tamamlanması üçün qalan müddəti gözləyirik
           await new Promise(res => setTimeout(res, 150));
@@ -1451,17 +1511,18 @@ export default function RealCompilerArena() {
 
     // 🏁 MƏRHƏLƏNİN BİTMƏSİNİN YOXLANILMASI
     if (!abortExecutionRef.current) {
-      const targetTileType = data.mapLayout[r.gridY]?.[r.gridX];
+      const targetTileType = changedData.mapLayout[r.gridY]?.[r.gridX];
 
       if (targetTileType === 5) { // Robot FINISH xanasındadır
 
         // 🎯 Yazı tapşırığının doğruluğunu yoxlayırıq
         let taskSuccess = true;
 
-        if (data.hasWriteTask) {
+        if (changedData.hasWriteTask) {
           // Hər bir hədəf xananı şagirdin yazdıqları ilə müqayisə edirik
-          for (const task of data.requiredWrites) {
-            const studentValue = xanaYazilari[task.y]?.[task.x];
+          for (const task of changedData.requiredWrites) {
+            const studentValue = currentXanaYazilari[task.y]?.[task.x];
+
             if (studentValue !== task.expected) {
               taskSuccess = false;
               break;
@@ -1472,6 +1533,8 @@ export default function RealCompilerArena() {
         if (taskSuccess) {
           setTerminalLogs(prev => [...prev, { type: 'success', text: `🏆 [MİSSİYA UĞURLU!] Bütün xanalar düzgün proqramlaşdırıldı! (+${data.points} Xal)` }]);
           if (typeof confetti === 'function') confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+
+          handleLevelSuccess();
           setShowSuccessModal(true);
         } else {
           setTerminalLogs(prev => [...prev, { type: 'error', text: '❌ Finişə çatdınız, lakin bəzi xanalara yazılan məlumatlar tapşırığın şərtini ödəmir! Kodunuzu yoxlayın.' }]);
@@ -1485,6 +1548,7 @@ export default function RealCompilerArena() {
     setIsRunning(false);
   };
 
+
   // KOMPİLYASİYA FUNKSİYASI (Dinamik C++ Kitabxanası bura qoşulur)
   const handleCompileAndRun = async () => {
     if (!data || !xanaYazilari) return;
@@ -1494,6 +1558,7 @@ export default function RealCompilerArena() {
     abortExecutionRef.current = false;
     setTerminalLogs([{ type: 'system', text: '⚡ Sehrli Meşə mühərriki başladılır...' }]);
 
+    setIsHelpExpanded(false)
 
     if (changedData.rules) {
       // Mongoose Map tipini təmiz JS obyektinə çeviririk (əgər toJSON olunmayıbsa sığorta üçün)
@@ -1630,11 +1695,11 @@ export default function RealCompilerArena() {
       setTerminalLogs(prev => [...prev, { type: 'success', text: '🚀 Simulyasiya icra olunur...' }]);
 
       // 4. Robotun vəziyyətini sıfırlayıb animasiyanı başladırıq
-      if (robotRef.current) {
-        robotRef.current.reset(); // İcra əvvəli koordinat və bayraqları sıfırlayırıq
-      }
+      // if (robotRef.current) {
+      //   robotRef.current.reset(); // İcra əvvəli koordinat və bayraqları sıfırlayırıq
+      // }
 
-      startRobotMovement(parsedSteps); // Frontend animasiya dövrünü (loop) tetikleyirik
+      startRobotMovement(parsedSteps, changedData); // Frontend animasiya dövrünü (loop) tetikleyirik
 
     } catch (error) {
       setTerminalLogs([{ type: 'error', text: '🌐 Serverlə əlaqə kəsildi və ya kompilyasiya xətası.' }]);
@@ -1649,6 +1714,10 @@ export default function RealCompilerArena() {
   };
 
 
+  const handleNext = () => {
+    if (nextLevel) navigateTo(`/student/gamearena/${nextLevel}`)
+    else setShowSuccessModal(false)
+  }
 
 
   if (!data) {
@@ -1712,6 +1781,58 @@ export default function RealCompilerArena() {
               <HomeIcon size={16} className="font-black" />
             </button>
 
+            {data?.help && (
+              <div className="absolute top-4 right-20 z-50 w-80 pointer-events-none min-h-[40px]">
+
+                {/* 1. MESAJ BALONU (Açıq olanda yuxarıdan sola və aşağıya doğru açılır) */}
+                <div
+                  className={`w-full bg-gradient-to-br from-purple-600 via-indigo-700 to-indigo-900 text-white rounded-3xl shadow-[0_10px_30px_rgba(109,40,217,0.3)] border-4 border-purple-400 overflow-hidden transition-all duration-500 ease-out pointer-events-auto origin-top-right ${isHelpExpanded
+                    ? 'scale-100 opacity-100 translate-y-0 translate-x-0'
+                    : 'scale-75 opacity-0 -translate-y-4 translate-x-4 pointer-events-none absolute top-0 right-0'
+                    }`}
+                >
+                  {/* Pop-up Başlığı */}
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-black/20 border-b border-purple-500/30">
+                    <div className="flex items-center gap-2">
+                      <span className="animate-bounce text-base">🔮</span>
+                      <span className="font-black text-[11px] uppercase tracking-wider text-purple-200">
+                        Sehrbazın Mesajı
+                      </span>
+                    </div>
+                    {/* Bağlama Düyməsi (X) */}
+                    <button
+                      onClick={() => setIsHelpExpanded(false)}
+                      className="w-6 h-6 rounded-full bg-purple-900/50 hover:bg-purple-500 text-purple-200 hover:text-white font-bold text-xs transition-all flex items-center justify-center shadow-inner"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  {/* Pop-up İçərliyi (Hündürlük tam) */}
+                  <div className="p-4  overflow-y-auto custom-scrollbar">
+                    <div
+                      className="prose prose-invert prose-sm max-w-none text-purple-100 font-semibold text-xs leading-relaxed
+                     prose-headings:font-black prose-headings:text-amber-300 prose-headings:text-sm prose-headings:mb-1
+                     prose-strong:text-amber-300 prose-code:bg-purple-950/80 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-amber-300 prose-code:border prose-code:border-purple-500/40"
+                      dangerouslySetInnerHTML={{ __html: data.help }}
+                    />
+                  </div>
+                </div>
+
+                {/* 2. KİÇİK İPUCU İKONU (Həmişə tam yuxarıda sağda sabit qalır, aşağı qaçmır) */}
+                <button
+                  onClick={() => setIsHelpExpanded(true)}
+                  className={`absolute top-0 right-0 pointer-events-auto flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black px-4 py-3 rounded-2xl shadow-lg border-4 border-white hover:border-amber-300 transition-all duration-300 transform active:scale-95 whitespace-nowrap ${!isHelpExpanded
+                    ? 'scale-100 opacity-100 translate-y-0 translate-x-0 animate-pulse'
+                    : 'scale-50 opacity-0 -translate-y-4 translate-x-4 pointer-events-none'
+                    }`}
+                >
+                  <span className="text-lg">💡</span>
+                  <span className="text-xs uppercase tracking-wider font-extrabold drop-shadow-sm">İpucu Al</span>
+                </button>
+
+              </div>
+            )}
             {/* Oyunun Canvası */}
             <canvas
               ref={canvasRef}
@@ -1856,7 +1977,7 @@ export default function RealCompilerArena() {
       {/* 🌊 DALĞALI TAPŞIRIQ POPUP-U */}
       {isPopupOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-md p-4 animate-[fadeIn_0.2s_ease-out]">
-          <div className="bg-white p-6 pt-12 rounded-[50px_20px_60px_30px] border-8 border-emerald-400 shadow-[0_16px_0_#065f46] text-center max-w-lg w-full relative">
+          <div className="bg-white p-6 pt-12 rounded-[50px_20px_60px_30px] border-8 border-emerald-400 shadow-[0_16px_0_#065f46] text-center max-w-[600px] w-full relative">
 
             {/* Sol yuxarı küncdəki asılı heyvan */}
             <div className="absolute -top-14 left-6 w-24 h-24 bg-white border-4 border-emerald-400 rounded-full p-2 shadow-xl transform -rotate-6">
@@ -1866,10 +1987,6 @@ export default function RealCompilerArena() {
                 className="w-full h-full object-contain"
               />
             </div>
-
-            <h2 className="text-xl font-black text-emerald-950 text-left pl-20 mb-2 border-b-2 border-dashed border-slate-100 pb-2">
-              🐾 {data?.title}
-            </h2>
 
             <div className='mb-4'>
               <div dangerouslySetInnerHTML={{ __html: data?.instructionText }} />
@@ -1886,6 +2003,8 @@ export default function RealCompilerArena() {
         </div>
       )}
 
+
+
       {/* UĞUR MODALI */}
       {showSuccessModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
@@ -1893,7 +2012,7 @@ export default function RealCompilerArena() {
             <div className="text-6xl mb-3 animate-bounce">🎉</div>
             <h2 className="text-2xl font-black text-emerald-950 mb-1">Mükəmməl Alqoritm!</h2>
             <p className="text-slate-600 text-sm font-bold mb-4">Robot qutuları itələdi, portaldan keçdi və missiyanı tamamladı!</p>
-            <button onClick={() => setShowSuccessModal(false)} className="w-full bg-emerald-500 text-white font-black py-3 rounded-xl shadow-[0_4px_0_#065f46] active:translate-y-[4px] active:shadow-none uppercase text-xs">
+            <button onClick={() => handleNext()} className="w-full bg-emerald-500 text-white font-black py-3 rounded-xl shadow-[0_4px_0_#065f46] active:translate-y-[4px] active:shadow-none uppercase text-xs">
               Davam Et 🐾
             </button>
           </div>

@@ -56,6 +56,8 @@ export async function POST(req: NextRequest) {
       xalSistemi: levelData.xalSistemi || [],
       order: levelData.order || 1,
 
+       help: levelData.help || "",
+
       // 🚀 YENİ ƏLAVƏLƏR
       variants: levelData.variants || [],
       rules: levelData.rules || null
@@ -74,17 +76,19 @@ export async function PUT(req: NextRequest) {
     await connectDB();
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
-
+    
     if (!id) {
       return NextResponse.json({ error: "Level ID-si göndərilməlidir!" }, { status: 400 });
     }
-
+    
     const body = await req.json();
     const { levelData } = body;
-
+    
     if (!levelData) {
       return NextResponse.json({ error: "Yenilənəcək data (levelData) tapılmadı!" }, { status: 400 });
     }
+    
+    console.log(levelData)
 
     const updatedLevel = await Level.findByIdAndUpdate(
       id,
@@ -103,6 +107,8 @@ export async function PUT(req: NextRequest) {
         requiredWrites: levelData.requiredWrites,
         xalSistemi: levelData.xalSistemi,
         order: levelData.order,
+        help: levelData.help,
+
 
         // 🚀 YENİ ƏLAVƏLƏR
         variants: levelData.variants,

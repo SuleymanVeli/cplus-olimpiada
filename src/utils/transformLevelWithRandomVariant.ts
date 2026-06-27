@@ -1,4 +1,5 @@
 export function transformLevelWithRandomVariant(levelData: any) {
+  console.log("bura level change")
   // Əgər admin heç bir variant əlavə etməyibsə, birbaşa köhnə variantı qaytar
   if (!levelData.variants || levelData.variants.length === 0) {
     return levelData;

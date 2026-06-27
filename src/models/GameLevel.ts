@@ -63,6 +63,7 @@ const LevelSchema = new Schema({
   requiredWrites: [RequiredWriteSchema],
   xalSistemi: [CavabXalSchema],
   rules: { type: CodeRulesSchema, default: null },
+  help: { type: String, default: ''},
   order: { type: Number, required: true }
 }, { timestamps: true });
 

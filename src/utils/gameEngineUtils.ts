@@ -56,6 +56,9 @@ export const generateEngineHeader = (levelData: LevelData): string => {
 
     const hasTerminal = levelData.mapLayout.some(row => row.includes(4));
 
+    const map_width = levelData.mapLayout[0].length;
+    const map_height = levelData.mapLayout.length;
+
     return `#include <iostream>
 #include <string>
 #include <vector>
@@ -63,8 +66,8 @@ export const generateEngineHeader = (levelData: LevelData): string => {
 using namespace std;
 
 namespace SehirliMese {
-    const int MAP_WIDTH = 10;
-    const int MAP_HEIGHT = 5;
+    const int MAP_WIDTH = ${map_width};
+    const int MAP_HEIGHT = ${map_height};
     const int MAKSIMUM_BAL = ${levelData.levelPoint};
 
     struct CavabXal {

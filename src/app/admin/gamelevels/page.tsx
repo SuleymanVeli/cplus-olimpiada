@@ -8,6 +8,7 @@ interface GameForm {
   instructionText: string;
   points: number;
   levelPoint: number;
+  help?: string;
   startX: number;
   startY: number;
   startDirection: 'up' | 'down' | 'left' | 'right';
@@ -60,6 +61,7 @@ export default function AdminMagiForestPage() {
   const [form, setForm] = useState<GameForm>({
     title: '',
     instructionText: '',
+    help: '',
     points: 100,
     levelPoint: 20,
     startX: 1,
@@ -67,6 +69,77 @@ export default function AdminMagiForestPage() {
     startDirection: 'right',
     order: 1
   });
+
+  // 🔄 Form və JSON modları arasında datanın anlıq sinxronizasiyası
+  useEffect(() => {
+    const maxUsageMap: Record<string, number> = {};
+    rules.maxUsage.forEach(item => { maxUsageMap[item.key] = item.val; });
+
+    if (activeTab === 'json') {
+      // Formdan JSON rejimine keçəndə mövcud form datalarını obyektə yığırıq
+      const currentFullData = {
+        title: form.title,
+        instructionText: form.instructionText,
+        points: form.points,
+        levelPoint: form.levelPoint,
+        startX: form.startX,
+        startY: form.startY,
+        startDirection: form.startDirection,
+        order: form.order,
+        mapLayout,
+        help: form.help || '',
+        xanaYazilari,
+        xanaTipleri,
+        hasWriteTask: !hasTerminal,
+        xalSistemi: hasTerminal ? xalSistemi : [],
+        requiredWrites: !hasTerminal ? requiredWrites : [],
+        variants,
+        rules: {
+          required: rules.required,
+          forbidden: rules.forbidden,
+          maxUsage: maxUsageMap
+        }
+      };
+      setJsonInput(JSON.stringify(currentFullData, null, 2));
+    } else if (activeTab === 'form' && jsonInput.trim() !== '') {
+      // JSON rejimindən Forma geri qayıdanda yazılan JSON-u oxuyub forma tətbiq edirik
+      try {
+        const parsed = JSON.parse(jsonInput);
+        if (parsed) {
+          setForm({
+            title: parsed.title || '',
+            instructionText: parsed.instructionText || '',
+            points: parsed.points || 100,
+            levelPoint: parsed.levelPoint || 20,
+            startX: parsed.startX ?? 1,
+            help: parsed.help || '',
+            startY: parsed.startY ?? 1,
+            startDirection: parsed.startDirection || 'right',
+            order: parsed.order || 1
+          });
+          if (parsed.mapLayout) setMapLayout(parsed.mapLayout);
+          if (parsed.xanaYazilari) setXanaYazilari(parsed.xanaYazilari);
+          if (parsed.xanaTipleri) setXanaTipleri(parsed.xanaTipleri);
+          if (parsed.xalSistemi) setXalSistemi(parsed.xalSistemi);
+          if (parsed.requiredWrites) setRequiredWrites(parsed.requiredWrites);
+          if (parsed.variants) setVariants(parsed.variants);
+          if (parsed.rules) {
+            const maxUsageArr = parsed.rules.maxUsage
+              ? Object.entries(parsed.rules.maxUsage).map(([key, val]) => ({ key, val: val as number }))
+              : [];
+            setRules({
+              required: parsed.rules.required || [],
+              forbidden: parsed.rules.forbidden || [],
+              maxUsage: maxUsageArr
+            });
+          }
+        }
+      } catch (e) {
+        // İstifadəçi natamam JSON yazdıqda formun qırılmaması üçün xətanı sadəcə konsolda boğuruq
+        console.warn("Sinxronizasiya xətası: Natamam və ya yalnış JSON strukturu.");
+      }
+    }
+  }, [activeTab]);
 
   // Kənar xanaları divar etmək
   useEffect(() => {
@@ -186,15 +259,48 @@ export default function AdminMagiForestPage() {
     setSelectedCell(null);
     setWidth(10);
     setHeight(5);
-    setForm({ title: '', instructionText: '', points: 100, levelPoint: 20, startX: 1, startY: 1, startDirection: 'right', order: games.length + 1 });
-    setMapLayout(Array(5).fill(0).map(() => Array(10).fill(0)));
-    setXanaYazilari(Array(5).fill(0).map(() => Array(10).fill('')));
-    setXanaTipleri(Array(5).fill(0).map(() => Array(10).fill('')));
+
+    const defaultForm: GameForm = {
+      title: '',
+      instructionText: '',
+      points: 100,
+      levelPoint: 20,
+      startX: 1,
+      startY: 1,
+      startDirection: 'right',
+      help: '',
+      order: games.length + 1
+    };
+
+    setForm(defaultForm);
+
+    const initialLayout = Array(5).fill(0).map(() => Array(10).fill(0));
+    const initialStrings = Array(5).fill(0).map(() => Array(10).fill(''));
+    const initialTypes = Array(5).fill(0).map(() => Array(10).fill(''));
+
+    setMapLayout(initialLayout);
+    setXanaYazilari(initialStrings);
+    setXanaTipleri(initialTypes);
     setXalSistemi([]);
     setRequiredWrites([]);
-    setIsModalOpen(true);
     setRules({ required: [], forbidden: [], maxUsage: [] });
     setVariants([]);
+
+    // 🚀 Yeni sənəd üçün default MagiForest JSON şablonu
+    const templateJson = {
+      ...defaultForm,
+      mapLayout: initialLayout,
+      xanaYazilari: initialStrings,
+      xanaTipleri: initialTypes,
+      hasWriteTask: true,
+      xalSistemi: [],
+      requiredWrites: [],
+      variants: [],
+      rules: { required: [], forbidden: [], maxUsage: {} }
+    };
+    setJsonInput(JSON.stringify(templateJson, null, 2));
+
+    setIsModalOpen(true);
   };
 
   const handleOpenEditModal = (game: any) => {
@@ -213,7 +319,8 @@ export default function AdminMagiForestPage() {
       startX: game.startX,
       startY: game.startY,
       startDirection: game.startDirection,
-      order: game.order || 1
+      order: game.order || 1,
+      help:game.help || ""
     });
     setMapLayout(game.mapLayout);
     setXanaYazilari(game.xanaYazilari);
@@ -224,7 +331,7 @@ export default function AdminMagiForestPage() {
     setIsModalOpen(true);
     setVariants(game.variants || []);
     if (game.rules) {
-      const maxUsageArr = game.rules.maxUsage 
+      const maxUsageArr = game.rules.maxUsage
         ? Object.entries(game.rules.maxUsage).map(([key, val]) => ({ key, val: val as number }))
         : [];
       setRules({
@@ -257,8 +364,7 @@ export default function AdminMagiForestPage() {
     setXalSistemi(updated);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     setValidationError(null);
     let payload: any = { topicId: selectedTopicId };
 
@@ -275,8 +381,8 @@ export default function AdminMagiForestPage() {
         hasWriteTask: !hasTerminal,
         xalSistemi: hasTerminal ? xalSistemi : [],
         requiredWrites: !hasTerminal ? requiredWrites : [],
-        variants, // 🚀 Yeni əlavə
-        rules: {  // 🚀 Yeni əlavə
+        variants,
+        rules: {
           required: rules.required,
           forbidden: rules.forbidden,
           maxUsage: maxUsageMap
@@ -284,8 +390,15 @@ export default function AdminMagiForestPage() {
       };
     } else {
       try {
-        payload.levelData = JSON.parse(jsonInput);
-      } catch (err: any) { return setValidationError(`JSON Xətası: ${err.message}`); }
+        // 🧠 JSON tabındakı məlumatı oxuyuruq
+        const parsedData = JSON.parse(jsonInput);
+        if (!parsedData.title?.trim()) {
+          return setValidationError("JSON daxilində 'title' (Oyun adı) mütləq qeyd edilməlidir!");
+        }
+        payload.levelData = parsedData;
+      } catch (err: any) {
+        return setValidationError(`JSON Sintaksis Xətası: ${err.message}`);
+      }
     }
 
     setIsSubmitting(true);
@@ -473,8 +586,8 @@ export default function AdminMagiForestPage() {
                               else if (cellValue === 4) cellIcon = "🖥️";
                               else if (cellValue === 5) cellIcon = "🏁";
                               else if (cellValue >= 10 && cellValue <= 19) cellIcon = `🌀${cellValue}`;
-                              else if (cellValue >= 20 && cellValue <= 29 && cellValue%2==0) cellIcon = `🟩${cellValue}`;
-                              else if (cellValue >= 20 && cellValue <= 29 && cellValue%2!=0) cellIcon = `📦${cellValue}`;
+                              else if (cellValue >= 20 && cellValue <= 29 && cellValue % 2 == 0) cellIcon = `🟩${cellValue}`;
+                              else if (cellValue >= 20 && cellValue <= 29 && cellValue % 2 != 0) cellIcon = `📦${cellValue}`;
 
                               const hasYazi = xanaTipleri[y]?.[x] !== "";
                               const hasTapsiriq = requiredWrites.some(w => w.x === x && w.y === y);
@@ -738,9 +851,26 @@ export default function AdminMagiForestPage() {
                 </div>
               </div>
 
+              <div className="bg-purple-50 p-5 rounded-2xl border-2 border-purple-100 space-y-2">
+                <label className="block text-xs font-black uppercase tracking-wider text-purple-800 flex items-center gap-1.5">
+                  <span>💡 Sehrbazın İpucu / Köməkçi Mətn (Kömək Sahəsi)</span>
+                  <span className="text-[10px] text-purple-500 font-medium lowercase">(HTML dəstəklənir)</span>
+                </label>
+                <textarea
+                  rows={4}
+                  value={form.help || ''}
+                  onChange={(e) => setForm({ ...form, help: e.target.value })}
+                  placeholder="Şagird çətinlik çəkəndə görəcəyi sehrli ipucunu daxil edin. Məsələn: <h3>İpucu:</h3> <p>Bu arenada <code>robot.ireli()</code> funksiyasını 3 dəfə yazmalısan!</p>"
+                  className="w-full bg-white border-2 border-purple-200 rounded-xl p-3 text-slate-800 font-medium text-sm focus:outline-none focus:border-purple-500 transition-all placeholder:text-slate-400"
+                />
+                <p className="text-[11px] font-medium text-purple-600/80">
+                  * Əgər bu sahəni boş buraxsanız, oyun arenasında şagirdlərə kömək paneli ümumiyyətlə göstərilməyəcək.
+                </p>
+              </div>
+
               <div className="flex justify-end gap-2 border-t pt-3 mt-auto">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="bg-slate-100 text-slate-600 font-bold text-xs px-4 py-2 rounded-xl">Ləğv Et</button>
-                <button type="submit" disabled={isSubmitting} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-5 py-2 rounded-xl flex items-center gap-1.5">
+                <button type="button" disabled={isSubmitting} onClick={()=>handleSubmit()} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-5 py-2 rounded-xl flex items-center gap-1.5">
                   {isSubmitting ? <Loader2 className="animate-spin" size={12} /> : <Save size={12} />} Yadda Saxla
                 </button>
               </div>
