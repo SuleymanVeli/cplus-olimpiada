@@ -5,7 +5,7 @@ import Task from '@/src/models/Task';
 import UserProgress from '@/src/models/UserProgress';
 
 export async function GET(req: NextRequest) {
-  try {
+  // try {
     await connectDB();
 
     if (!req.nextUrl.searchParams.has('userId')) {
@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
     const compTasks = progress.completedTasks.map((id: any) => id.toString());
     const compLessons = progress.completedLessons.map((id: any) => id.toString());
     const compModules = progress.completedModules.map((id: any) => id.toString());
-    const currentModIdStr = progress.currentModuleId.toString();
+    const currentModIdStr = progress?.currentModuleId?.toString();
 
     const currentModule = await Module.findById(currentModIdStr);
 
@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
       const isCurrentModul = currentModIdStr === mod._id.toString();
       const isModuleCompleted = compModules.includes(mod._id.toString());
 
-      const isModuleOld = mod.order <  currentModule.order;
+      const isModuleOld = mod?.order <  currentModule?.order;
 
       // A) DƏRS (LESSON) NODE
       let lessonStatus: 'completed' | 'active' | 'locked' = 'locked';
@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
 
       if (isLessonCompleted) {
         lessonStatus = 'completed';
-      } else if (isCurrentModul && progress.currentTaskOrder === 0) {
+      } else if (isCurrentModul && progress?.currentTaskOrder === 0) {
         lessonStatus = 'active';
       }
 
@@ -108,7 +108,7 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true, data: flatNodes }, { status: 200 });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-  }
+  // } catch (error: any) {
+  //   return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  // }
 }

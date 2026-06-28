@@ -17,19 +17,9 @@ import { useTransition } from '@/src/context/TransitionContext';
 
 // 1. Frontend Parser və Animasiya Sistemi Üçün Əmrlər
 interface ExecutionStep {
-  cmd:
-  | 'move'
-  | 'left'
-  | 'right'
-  | 'push_box'
-  | 'portal_jump'
-  | 'look_ahead'
-  | 'read_int'
-  | 'read_string'
-  | 'read_double'
-  | 'terminal_write'
-  | 'tile_write';
+  cmd: string;
   raw: string;
+  value?: string;
 }
 
 interface PortalData {
@@ -55,6 +45,7 @@ interface ScenarioData {
 }
 
 interface OriginalLevelData {
+   _id: string;
   title: string;
   instructionText: string;
   points: number;            // Səviyyənin ümumi (maksimum) balı
@@ -76,6 +67,7 @@ interface OriginalLevelData {
 }
 
 interface LevelData {
+  _id: string;
   title: string;
   instructionText: string;
   points: number;            // Səviyyənin ümumi (maksimum) balı
@@ -91,7 +83,7 @@ interface LevelData {
   hasWriteTask: boolean;
   requiredWrites: any[];
   order: number;
-  help: number;
+  help: string;
 }
 
 const GRID_SIZE = 60;
@@ -194,7 +186,7 @@ export default function RealCompilerArena() {
         robotRef.current.currentY = robotRef.current.targetY;
         robotRef.current.angle = robotRef.current.directionAngles[changedData.startDirection];
         robotRef.current.targetAngle = robotRef.current.directionAngles[changedData.startDirection];
-        robotRef.current.finishOpened = !changedData.mapLayout.some(row => row.includes(4));
+        robotRef.current.finishOpened = !changedData.mapLayout.some((row:any) => row.includes(4));
 
         if (changedData) {
 
@@ -230,7 +222,7 @@ export default function RealCompilerArena() {
 
 
   // Robotun fiziki və vizual obyekti
-  const robotRef = useRef({
+  const robotRef = useRef<any>({
     gridX: 0,
     gridY: 0,
     targetX: 0,
@@ -1232,7 +1224,7 @@ export default function RealCompilerArena() {
     robotRef.current.currentY = robotRef.current.targetY;
     robotRef.current.angle = robotRef.current.directionAngles[changedData.startDirection];
     robotRef.current.targetAngle = robotRef.current.directionAngles[changedData.startDirection];
-    robotRef.current.finishOpened = !changedData.mapLayout.some(row => row.includes(4));
+    robotRef.current.finishOpened = !changedData.mapLayout.some((row:any) => row.includes(4));
 
     if (changedData) {
       const boxes: typeof ironBoxesRef.current = {};
@@ -1285,7 +1277,7 @@ export default function RealCompilerArena() {
   };
 
   // ANİMASİYA VE HƏRƏKƏT SİNYALLARININ İCRA OLUNMASI
-  const startRobotMovement = async (steps: ExecutionStep[], changedData: LevelData) => {
+  const startRobotMovement = async (steps: any[], changedData: LevelData) => {
     if (!data || !dynamicMap || !xanaYazilari) return;
     setIsRunning(true);
     setSuccessSteps([]);
@@ -1636,7 +1628,7 @@ export default function RealCompilerArena() {
           setTerminalLogs(prev => [...prev, { type: 'system', text: `🖥️ [Terminal]: ${line.replace("TERMINAL LOG:", "")}` }]);
         } else if (line.startsWith("KONSOL:")) {
           const isSuccess = line.includes("Təbriklər");
-          setTerminalLogs(prev => [...prev, { type: isSuccess ? 'success' : 'warning', text: `📢 ${line.replace("KONSOL:", "")}` }]);
+          setTerminalLogs((prev:any) => [...prev, { type: isSuccess ? 'success' : 'warning', text: `📢 ${line.replace("KONSOL:", "")}` }]);
         } else if (line === "ireli") {
           parsedSteps.push({ cmd: 'move', raw: 'robot.ireli()' });
         } else if (line === "sola") {

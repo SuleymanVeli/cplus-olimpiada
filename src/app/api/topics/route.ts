@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
         ...topic,
         isUnlocked: tIdx === 0, // Yalnız ilk mövzu açıqdır
         isCompleted: false,
-        levels: topic.levels.map((level, lIdx) => ({
+        levels: topic.levels.map((level:any, lIdx:any) => ({
           ...level,
           isUnlocked: tIdx === 0 && lIdx === 0, // Yalnız ilk mövzunun ilk leveli açıqdır
           isCompleted: false,
@@ -81,7 +81,7 @@ export async function GET(req: NextRequest) {
       const isTopicCompleted = userTopicProgress ? userTopicProgress.isCompleted : false;
 
       // İndi isə Mövzunun daxilindəki hər bir Leveli tək-tək yoxlayırıq
-      const processedLevels = topic.levels.map((level, levelIndex) => {
+      const processedLevels = topic.levels.map((level :any, levelIndex:any) => {
         const completedRecord = userTopicProgress?.completedLevels?.find(
           (l: any) => l.levelId.toString() === level._id.toString()
         );
