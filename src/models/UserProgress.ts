@@ -45,7 +45,7 @@ const PlayedGameSchema = new Schema({
 const UserProgressSchema: Schema = new Schema({
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   totalXp: { type: Number, default: 0 },
-  currentModuleId: { type: Schema.Types.ObjectId, ref: 'Module'},
+  currentModuleId: { type: Schema.Types.ObjectId, ref: 'Module', default: null }, // Default: kursu bitirib / başlamayıb
   currentTaskOrder: { type: Number, default: 0 }, // Default: dərslə başlayır
   completedLessons: [{ type: Schema.Types.ObjectId, ref: 'Module' }], // Bizdə hər modulun 1 mühazirəsi var
   completedTasks: [{ type: Schema.Types.ObjectId, ref: 'Task' }],

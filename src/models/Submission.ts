@@ -40,6 +40,8 @@ const SubmissionSchema = new Schema<ISubmission>({
 // Yarış və Şagird cütlüyünün unikal olmasını təmin edirik (Bir şagird bir yarışa 1 dəfə qatıla bilər)
 SubmissionSchema.index({ contestId: 1, studentId: 1 }, { unique: true });
 
-
+if (!mongoose.models.Contest) {
+  mongoose.model('Contest', new mongoose.Schema({})); 
+}
 
 export default mongoose.models.Submission || mongoose.model<ISubmission>('Submission', SubmissionSchema);
