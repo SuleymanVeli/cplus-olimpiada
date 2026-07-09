@@ -320,7 +320,7 @@ export default function AdminMagiForestPage() {
       startY: game.startY,
       startDirection: game.startDirection,
       order: game.order || 1,
-      help:game.help || ""
+      help: game.help || ""
     });
     setMapLayout(game.mapLayout);
     setXanaYazilari(game.xanaYazilari);
@@ -762,115 +762,119 @@ export default function AdminMagiForestPage() {
               {/* ================================================================= */}
               {/* 🆕 YENİ BÖLMƏ: OLİMPİADA QAYDALARI PANELİ (RULES) */}
               {/* ================================================================= */}
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
-                <h3 className="text-xs font-black uppercase text-slate-700 flex items-center gap-1">🛠️ Səviyyə Qaydaları və Məhdudiyyətlər</h3>
+              {activeTab === 'form' &&
+                <>
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+                    <h3 className="text-xs font-black uppercase text-slate-700 flex items-center gap-1">🛠️ Səviyyə Qaydaları və Məhdudiyyətlər</h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Mütləq Əmrlər */}
-                  <div className="bg-white p-3 rounded-lg border space-y-2">
-                    <label className="text-[10px] font-bold text-emerald-600 uppercase block">🟢 Mütləq Əmrlər (Required)</label>
-                    <div className="flex gap-1">
-                      <input type="text" placeholder="if, while..." value={newRequired} onChange={(e) => setNewRequired(e.target.value)} className="flex-1 p-1 border rounded text-xs" />
-                      <button type="button" onClick={() => { if (newRequired) { setRules({ ...rules, required: [...rules.required, newRequired] }); setNewRequired(''); } }} className="bg-emerald-600 text-white px-2 rounded text-xs">+</button>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {rules.required.map(r => <span key={r} className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-1">{r} <X size={10} className="cursor-pointer" onClick={() => setRules({ ...rules, required: rules.required.filter(x => x !== r) })} /></span>)}
-                    </div>
-                  </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Mütləq Əmrlər */}
+                      <div className="bg-white p-3 rounded-lg border space-y-2">
+                        <label className="text-[10px] font-bold text-emerald-600 uppercase block">🟢 Mütləq Əmrlər (Required)</label>
+                        <div className="flex gap-1">
+                          <input type="text" placeholder="if, while..." value={newRequired} onChange={(e) => setNewRequired(e.target.value)} className="flex-1 p-1 border rounded text-xs" />
+                          <button type="button" onClick={() => { if (newRequired) { setRules({ ...rules, required: [...rules.required, newRequired] }); setNewRequired(''); } }} className="bg-emerald-600 text-white px-2 rounded text-xs">+</button>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {rules.required.map(r => <span key={r} className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-1">{r} <X size={10} className="cursor-pointer" onClick={() => setRules({ ...rules, required: rules.required.filter(x => x !== r) })} /></span>)}
+                        </div>
+                      </div>
 
-                  {/* Qadağan Əmrlər */}
-                  <div className="bg-white p-3 rounded-lg border space-y-2">
-                    <label className="text-[10px] font-bold text-rose-600 uppercase block">🔴 Qadağan Əmrlər (Forbidden)</label>
-                    <div className="flex gap-1">
-                      <input type="text" placeholder="for, goto..." value={newForbidden} onChange={(e) => setNewForbidden(e.target.value)} className="flex-1 p-1 border rounded text-xs" />
-                      <button type="button" onClick={() => { if (newForbidden) { setRules({ ...rules, forbidden: [...rules.forbidden, newForbidden] }); setNewForbidden(''); } }} className="bg-rose-600 text-white px-2 rounded text-xs">+</button>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {rules.forbidden.map(r => <span key={r} className="bg-rose-50 text-rose-700 border border-rose-200 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-1">{r} <X size={10} className="cursor-pointer" onClick={() => setRules({ ...rules, forbidden: rules.forbidden.filter(x => x !== r) })} /></span>)}
-                    </div>
-                  </div>
+                      {/* Qadağan Əmrlər */}
+                      <div className="bg-white p-3 rounded-lg border space-y-2">
+                        <label className="text-[10px] font-bold text-rose-600 uppercase block">🔴 Qadağan Əmrlər (Forbidden)</label>
+                        <div className="flex gap-1">
+                          <input type="text" placeholder="for, goto..." value={newForbidden} onChange={(e) => setNewForbidden(e.target.value)} className="flex-1 p-1 border rounded text-xs" />
+                          <button type="button" onClick={() => { if (newForbidden) { setRules({ ...rules, forbidden: [...rules.forbidden, newForbidden] }); setNewForbidden(''); } }} className="bg-rose-600 text-white px-2 rounded text-xs">+</button>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {rules.forbidden.map(r => <span key={r} className="bg-rose-50 text-rose-700 border border-rose-200 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-1">{r} <X size={10} className="cursor-pointer" onClick={() => setRules({ ...rules, forbidden: rules.forbidden.filter(x => x !== r) })} /></span>)}
+                        </div>
+                      </div>
 
-                  {/* Limitli Əmrlər */}
-                  <div className="bg-white p-3 rounded-lg border space-y-2">
-                    <label className="text-[10px] font-bold text-amber-600 uppercase block">🟡 Limitli Əmrlər (Max Usage)</label>
-                    <div className="flex gap-1">
-                      <input type="text" placeholder="robot.ireli()" value={newLimitKey} onChange={(e) => setNewLimitKey(e.target.value)} className="flex-1 p-1 border rounded text-xs" />
-                      <input type="number" min={1} value={newLimitVal} onChange={(e) => setNewLimitVal(parseInt(e.target.value) || 1)} className="w-12 p-1 border rounded text-xs text-center" />
-                      <button type="button" onClick={() => { if (newLimitKey) { setRules({ ...rules, maxUsage: [...rules.maxUsage, { key: newLimitKey, val: newLimitVal }] }); setNewLimitKey(''); } }} className="bg-amber-600 text-white px-2 rounded text-xs">+</button>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      {rules.maxUsage.map(r => <div key={r.key} className="bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded text-[10px] flex justify-between items-center"><span>{r.key} &le; {r.val} dəfə</span><X size={10} className="cursor-pointer text-amber-600" onClick={() => setRules({ ...rules, maxUsage: rules.maxUsage.filter(x => x.key !== r.key) })} /></div>)}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* ================================================================= */}
-              {/* 🆕 YENİ BÖLMƏ: DİNAMİK SSENARİLƏR PANELİ (VARIANTS) */}
-              {/* ================================================================= */}
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-xs font-black uppercase text-slate-700">🎲 Dinamik Ssenari Variantları (MagiForest Engine)</h3>
-                  <button type="button" onClick={() => setVariants([...variants, { values: [{ name: '$a', value: '10' }] }])} className="bg-sky-600 text-white font-bold text-[10px] px-2 py-1 rounded">+ Yeni Ssenari Əlavə Et</button>
-                </div>
-
-                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
-                  {variants.map((senari, sIdx) => (
-                    <div key={sIdx} className="bg-white p-3 rounded-lg border relative space-y-2">
-                      <button type="button" onClick={() => setVariants(variants.filter((_, i) => i !== sIdx))} className="absolute top-2 right-2 text-rose-500 hover:text-rose-700 text-xs font-bold">Ssenarini Sil</button>
-                      <span className="text-[10px] font-black text-slate-400">Ssenari #{sIdx + 1}</span>
-
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        {senari.values.map((v, vIdx) => (
-                          <div key={vIdx} className="border p-1.5 rounded bg-slate-50 relative group">
-                            <input type="text" value={v.name} placeholder="Dəyişən (örn: $a)" onChange={(e) => {
-                              const next = [...variants];
-                              next[sIdx].values[vIdx].name = e.target.value;
-                              setVariants(next);
-                            }} className="w-full text-[10px] p-1 border rounded font-mono font-bold text-purple-700" />
-                            <input type="text" value={v.value} placeholder="Dəyər (örn: 12)" onChange={(e) => {
-                              const next = [...variants];
-                              next[sIdx].values[vIdx].value = e.target.value;
-                              setVariants(next);
-                            }} className="w-full text-[10px] p-1 border rounded mt-1" />
-                            <button type="button" onClick={() => {
-                              const next = [...variants];
-                              next[sIdx].values = next[sIdx].values.filter((_, i) => i !== vIdx);
-                              setVariants(next);
-                            }} className="absolute -top-1 -right-1 hidden group-hover:block bg-rose-500 text-white rounded-full p-0.5 text-[8px]">X</button>
-                          </div>
-                        ))}
-                        <button type="button" onClick={() => {
-                          const next = [...variants];
-                          next[sIdx].values.push({ name: '', value: '' });
-                          setVariants(next);
-                        }} className="border border-dashed text-[10px] font-bold text-slate-400 hover:bg-slate-50 rounded flex items-center justify-center min-h-[50px]">+ Dəyişən</button>
+                      {/* Limitli Əmrlər */}
+                      <div className="bg-white p-3 rounded-lg border space-y-2">
+                        <label className="text-[10px] font-bold text-amber-600 uppercase block">🟡 Limitli Əmrlər (Max Usage)</label>
+                        <div className="flex gap-1">
+                          <input type="text" placeholder="robot.ireli()" value={newLimitKey} onChange={(e) => setNewLimitKey(e.target.value)} className="flex-1 p-1 border rounded text-xs" />
+                          <input type="number" min={1} value={newLimitVal} onChange={(e) => setNewLimitVal(parseInt(e.target.value) || 1)} className="w-12 p-1 border rounded text-xs text-center" />
+                          <button type="button" onClick={() => { if (newLimitKey) { setRules({ ...rules, maxUsage: [...rules.maxUsage, { key: newLimitKey, val: newLimitVal }] }); setNewLimitKey(''); } }} className="bg-amber-600 text-white px-2 rounded text-xs">+</button>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          {rules.maxUsage.map(r => <div key={r.key} className="bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded text-[10px] flex justify-between items-center"><span>{r.key} &le; {r.val} dəfə</span><X size={10} className="cursor-pointer text-amber-600" onClick={() => setRules({ ...rules, maxUsage: rules.maxUsage.filter(x => x.key !== r.key) })} /></div>)}
+                        </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
+                  </div>
 
-              <div className="bg-purple-50 p-5 rounded-2xl border-2 border-purple-100 space-y-2">
-                <label className="block text-xs font-black uppercase tracking-wider text-purple-800 flex items-center gap-1.5">
-                  <span>💡 Sehrbazın İpucu / Köməkçi Mətn (Kömək Sahəsi)</span>
-                  <span className="text-[10px] text-purple-500 font-medium lowercase">(HTML dəstəklənir)</span>
-                </label>
-                <textarea
-                  rows={4}
-                  value={form.help || ''}
-                  onChange={(e) => setForm({ ...form, help: e.target.value })}
-                  placeholder="Şagird çətinlik çəkəndə görəcəyi sehrli ipucunu daxil edin. Məsələn: <h3>İpucu:</h3> <p>Bu arenada <code>robot.ireli()</code> funksiyasını 3 dəfə yazmalısan!</p>"
-                  className="w-full bg-white border-2 border-purple-200 rounded-xl p-3 text-slate-800 font-medium text-sm focus:outline-none focus:border-purple-500 transition-all placeholder:text-slate-400"
-                />
-                <p className="text-[11px] font-medium text-purple-600/80">
-                  * Əgər bu sahəni boş buraxsanız, oyun arenasında şagirdlərə kömək paneli ümumiyyətlə göstərilməyəcək.
-                </p>
-              </div>
+                  {/* ================================================================= */}
+                  {/* 🆕 YENİ BÖLMƏ: DİNAMİK SSENARİLƏR PANELİ (VARIANTS) */}
+                  {/* ================================================================= */}
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-xs font-black uppercase text-slate-700">🎲 Dinamik Ssenari Variantları (MagiForest Engine)</h3>
+                      <button type="button" onClick={() => setVariants([...variants, { values: [{ name: '$a', value: '10' }] }])} className="bg-sky-600 text-white font-bold text-[10px] px-2 py-1 rounded">+ Yeni Ssenari Əlavə Et</button>
+                    </div>
+
+                    <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                      {variants.map((senari, sIdx) => (
+                        <div key={sIdx} className="bg-white p-3 rounded-lg border relative space-y-2">
+                          <button type="button" onClick={() => setVariants(variants.filter((_, i) => i !== sIdx))} className="absolute top-2 right-2 text-rose-500 hover:text-rose-700 text-xs font-bold">Ssenarini Sil</button>
+                          <span className="text-[10px] font-black text-slate-400">Ssenari #{sIdx + 1}</span>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            {senari.values.map((v, vIdx) => (
+                              <div key={vIdx} className="border p-1.5 rounded bg-slate-50 relative group">
+                                <input type="text" value={v.name} placeholder="Dəyişən (örn: $a)" onChange={(e) => {
+                                  const next = [...variants];
+                                  next[sIdx].values[vIdx].name = e.target.value;
+                                  setVariants(next);
+                                }} className="w-full text-[10px] p-1 border rounded font-mono font-bold text-purple-700" />
+                                <input type="text" value={v.value} placeholder="Dəyər (örn: 12)" onChange={(e) => {
+                                  const next = [...variants];
+                                  next[sIdx].values[vIdx].value = e.target.value;
+                                  setVariants(next);
+                                }} className="w-full text-[10px] p-1 border rounded mt-1" />
+                                <button type="button" onClick={() => {
+                                  const next = [...variants];
+                                  next[sIdx].values = next[sIdx].values.filter((_, i) => i !== vIdx);
+                                  setVariants(next);
+                                }} className="absolute -top-1 -right-1 hidden group-hover:block bg-rose-500 text-white rounded-full p-0.5 text-[8px]">X</button>
+                              </div>
+                            ))}
+                            <button type="button" onClick={() => {
+                              const next = [...variants];
+                              next[sIdx].values.push({ name: '', value: '' });
+                              setVariants(next);
+                            }} className="border border-dashed text-[10px] font-bold text-slate-400 hover:bg-slate-50 rounded flex items-center justify-center min-h-[50px]">+ Dəyişən</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="bg-purple-50 p-5 rounded-2xl border-2 border-purple-100 space-y-2">
+                    <label className="block text-xs font-black uppercase tracking-wider text-purple-800 flex items-center gap-1.5">
+                      <span>💡 Sehrbazın İpucu / Köməkçi Mətn (Kömək Sahəsi)</span>
+                      <span className="text-[10px] text-purple-500 font-medium lowercase">(HTML dəstəklənir)</span>
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={form.help || ''}
+                      onChange={(e) => setForm({ ...form, help: e.target.value })}
+                      placeholder="Şagird çətinlik çəkəndə görəcəyi sehrli ipucunu daxil edin. Məsələn: <h3>İpucu:</h3> <p>Bu arenada <code>robot.ireli()</code> funksiyasını 3 dəfə yazmalısan!</p>"
+                      className="w-full bg-white border-2 border-purple-200 rounded-xl p-3 text-slate-800 font-medium text-sm focus:outline-none focus:border-purple-500 transition-all placeholder:text-slate-400"
+                    />
+                    <p className="text-[11px] font-medium text-purple-600/80">
+                      * Əgər bu sahəni boş buraxsanız, oyun arenasında şagirdlərə kömək paneli ümumiyyətlə göstərilməyəcək.
+                    </p>
+                  </div>
+
+                </>}
 
               <div className="flex justify-end gap-2 border-t pt-3 mt-auto">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="bg-slate-100 text-slate-600 font-bold text-xs px-4 py-2 rounded-xl">Ləğv Et</button>
-                <button type="button" disabled={isSubmitting} onClick={()=>handleSubmit()} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-5 py-2 rounded-xl flex items-center gap-1.5">
+                <button type="button" disabled={isSubmitting} onClick={() => handleSubmit()} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-5 py-2 rounded-xl flex items-center gap-1.5">
                   {isSubmitting ? <Loader2 className="animate-spin" size={12} /> : <Save size={12} />} Yadda Saxla
                 </button>
               </div>

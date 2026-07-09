@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { 
   UserPlus, MessageSquare, Clock, Copy, ChevronDown, ChevronUp,
-  ExternalLink, Check, Loader2, Search, X, Award, BookOpen, Flag
+  ExternalLink, Check, Loader2, Search, X, Award, BookOpen, Flag,
+  RefreshCw
 } from 'lucide-react';
 
 export default function AdminStudents() {
@@ -12,10 +13,33 @@ export default function AdminStudents() {
   const [actionLoading, setActionLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [syncLoading, setSyncLoading] = useState(false);
   
   // Şagird Seçimi və Akkordeon İndeksi
   const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
   const [openExamIndex, setOpenExamIndex] = useState<number | null>(null);
+
+
+  const handleSyncProgress = async () => {
+    if (!window.confirm("Bütün şagirdlərin proqresini yenidən hesablamaq istədiyinizdən əminsiniz?")) return;
+    
+    setSyncLoading(true);
+    try {
+      const res = await fetch('/api/admin/students/sync-progress', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+        await fetchStudents(); // Siyahını yenidən yükləyirik
+      } else {
+        alert("Xəta baş verdi: " + data.error);
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Şəbəkə xətası baş verdi.");
+    } finally {
+      setSyncLoading(false);
+    }
+  };
 
   const fetchStudents = async () => {
     try {
@@ -61,6 +85,20 @@ export default function AdminStudents() {
           <p className="text-slate-500 text-sm font-medium">Tərəqqi və növbəti addım izləmə paneli</p>
         </div>
       </div>
+
+      <button
+          onClick={handleSyncProgress}
+          disabled={syncLoading || loading}
+          className="w-full sm:w-auto flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all disabled:opacity-50"
+        >
+          {syncLoading ? (
+            <Loader2 className="animate-spin" size={16} />
+          ) : (
+            <RefreshCw size={16} />
+          )}
+          Proqresləri Yenilə (Sync)
+        </button>
+      
 
       {/* SEARCH BAR */}
       <div className="bg-white p-2 rounded-xl border border-slate-200 mb-6 flex items-center gap-3 shadow-sm">
