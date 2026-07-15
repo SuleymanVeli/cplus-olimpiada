@@ -15,26 +15,14 @@ export async function GET() {
     }
 
     // 1. İstifadəçini axtar
-    let user = await User.findOne({ email: session.user.email });
+    let user = await User.findOne({ email: session.user.email }).lean();
 
-    // 2. Əgər istifadəçi yoxdursa, yaradın
+    // 2. Əgər istifadəçi tapılmadısa, UserProgress kolleksiyasını yoxlayın
     if (!user) {
-      user = await User.create({
-        email: session.user.email,
-        fullName: session.user.name || "",
-        isRegistered: false,
-        isBlocked: false,
-      });
+      return NextResponse.json({ error: "İstifadəçi tapılmadı" }, { status: 404 });
     }
 
-    // 3. İndi user._id artıq mövcuddur, progress-i axtarın
-    const userProg = await UserProgress.findOne({ userId: user._id });
-    
-    // 4. İstifadəçi obyektini klonlayıb səviyyəni əlavə edin (Mongoose obyektini birbaşa dəyişmək bəzən problem yaradır)
-    const userData = user.toObject();
-    userData.level = userProg?.level || 1;
-
-    return NextResponse.json(userData);
+    return NextResponse.json(user);
   } catch (error) {
     console.error("Profile error:", error);
     return NextResponse.json({ error: "Server xətası" }, { status: 500 });
