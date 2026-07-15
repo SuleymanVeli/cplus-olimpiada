@@ -163,7 +163,16 @@ export default function DynamicArenaPage() {
   }, [taskId, userData?._id]);
 
   const goBackToMap = () => {
-    navigateTo('/student/learning');
+    switch (userData?.level) {
+      case 1:
+        navigateTo('/student/learning');
+        break;
+      case 2:
+        navigateTo('/student/adventure');
+        break;
+      default:
+        navigateTo('/student/learning');
+    }
   };
 
 const validateCode = async () => {
