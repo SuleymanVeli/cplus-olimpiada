@@ -20,6 +20,32 @@
   }
 }
 
+.level-1-theme {
+  --arena-bg: linear-gradient(to bottom, #eef9f1 0%, #f4fbf7 50%, #ffffff 100%);
+  --mentor-border: #a7f3d0; /* emerald-200 */
+  --mentor-bg: #ecfdf5;     /* emerald-50 */
+  --mentor-text: #047857;   /* emerald-700 */
+  --mentor-badge: #34d399;  /* emerald-400 */
+  
+  --student-border: #bae6fd; /* sky-300 */
+  --student-text-label: #0ea5e9; /* sky-500 */
+}
+
+/* LEVEL 2: Canlı cəngəllik, meyvə və günəş tonları (Sənin verdiyin gradientə uyğunlaşdırılmış) */
+.level-2-theme {
+  --arena-bg: linear-gradient(62deg, #69bfb8 0%, #bbd279 42%, #eea63a 91%);
+  
+  /* Mentor üçün daha canlı yarpaq/fıstıq yaşılı tonları */
+  --mentor-border: #bbd279; 
+  --mentor-bg: #f8faf0;     
+  --mentor-text: #5b7314;   
+  --mentor-badge: #96b33b;  
+  
+  /* Şagird hissəsi üçün günəş/narıncı meyvə tonları */
+  --student-border: #f8b24f; 
+  --student-text-label: #d97706; /* amber-600 */
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
@@ -27,6 +53,46 @@ body {
   user-select: text;
 }
 
+/* .arena-bg-gradient1 {
+ background: linear-gradient(to bottom, #eef9f1 0%, #f4fbf7 50%, #ffffff 100%);
+}
+
+.arena-bg-gradient2 {
+ background: #69bfb8;
+background: -webkit-linear-gradient(62deg, #69bfb8 0%, #bbd279 42%, #eea63a 91%);
+background: linear-gradient(62deg, #69bfb8 0%, #bbd279 42%, #eea63a 91%);
+
+
+} */
+
+
+/* Dinamik Dəyişənləri tətbiq edən siniflər */
+.dynamic-arena-bg {
+  background: var(--arena-bg);
+}
+
+.dynamic-mentor-box {
+  border-color: var(--mentor-border) !important;
+}
+
+.dynamic-mentor-speech {
+  background-color: var(--mentor-bg) !important;
+  border-color: var(--mentor-border) !important;
+  color: var(--mentor-text) !important;
+}
+
+.dynamic-mentor-badge {
+  background-color: var(--mentor-badge) !important;
+  border-color: var(--mentor-badge) !important;
+}
+
+.dynamic-student-box {
+  border-color: var(--student-border) !important;
+}
+
+.dynamic-student-label {
+  color: var(--student-text-label) !important;
+}
 
 /* Parse olunan HTML üçün xüsusi stillər */
 .parse-content .step-label {

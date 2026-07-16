@@ -11,7 +11,7 @@ import { useParams } from 'next/navigation';
 import { transformLevelWithRandomVariant } from '@/src/utils/transformLevelWithRandomVariant';
 import { cloneDeep } from 'lodash';
 import validateCodeRules from '@/src/utils/validateCodeRules';
-import { animalsData } from '@/src/lib/constants';
+import { animalsDataForest as animalsData } from '@/src/lib/constants';
 import { useUser } from '@/src/context/UserContext';
 import { useTransition } from '@/src/context/TransitionContext';
 

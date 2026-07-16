@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { useTransition } from '@/src/context/TransitionContext';
 import { useUser } from '@/src/context/UserContext';
 import { ArrowLeft, ChevronRight, Sword, Video, BookOpen, Smile } from 'lucide-react';
+import { animalsDataAdventurers, animalsDataForests, AnimalType } from '@/src/lib/constants';
 
 const animalsData = [
   { id: 1, nameAz: "Canavar", nameEn: "Wolf", image: "1.jpg" },
@@ -21,13 +22,6 @@ const animalsData = [
   { id: 12, nameAz: "Tənbəllər", nameEn: "Sloth", image: "12.jpg" },
   { id: 13, nameAz: "Surikat", nameEn: "Meerkat", image: "13.jpg" }
 ];
-
-interface AnimalType {
-  id: number;
-  nameAz: string;
-  nameEn: string;
-  image: string;
-}
 
 interface LessonData {
   _id: string;
@@ -106,9 +100,12 @@ export default function InteractiveLessonPage() {
     }
 
     function setupMentor(data: LessonData) {
-      const assignedAnimal = animalsData[(data.order || 0) % animalsData.length];
+       const assignedAnimal = data.level === 1
+                  ? animalsDataForests[(data.order || 0) % animalsDataForests.length]            
+                  : animalsDataAdventurers[(data.order || 0) % animalsDataAdventurers.length];
+
       setMentorAnimal(assignedAnimal);
-      setMentorSpeech(`Salam, gənc kod yazarı! 🌟 Mən meşənin müəllimi ${assignedAnimal.nameAz}. Bugün səninlə super bir mövzu öyrənəcəyik! Hazırsansa, əvvəlcə izah videomuza baxaq, sonra konspekti oxuyarıq! 🚀`);
+      setMentorSpeech(`Salam, gənc kod yazarı! 🌟 Mən ${data.level === 1 ? 'meşənin' : 'cəngəllik'} müəllimi ${assignedAnimal.name}. Bugün səninlə super bir mövzu öyrənəcəyik! Hazırsansa, əvvəlcə izah videomuza baxaq, sonra konspekti oxuyarıq! 🚀`);
     }
 
     function generateMockLesson() {
@@ -178,6 +175,19 @@ export default function InteractiveLessonPage() {
     }
   };
 
+  const goBackToMap = () => {
+    switch (lesson?.level) {
+      case 1:
+        navigateTo('/student/learning');
+        break;
+      case 2:
+        navigateTo('/student/adventure');
+        break;
+      default:
+        navigateTo('/student/learning');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center flex-col gap-4 bg-[#eef9f1]">
@@ -192,7 +202,7 @@ export default function InteractiveLessonPage() {
   if (!lesson) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#eef9f1] via-[#f4fbf7] to-[#ffffff] text-slate-700 font-sans select-none pb-20 relative">
+  <div className={`min-h-screen dynamic-arena-bg ${lesson?.level === 2 ? 'level-2-theme' : 'level-1-theme'} text-slate-700 font-sans select-none pb-20 relative`}>
 
       {/* Şən Bulud Arxa Fon Dekorasiyası */}
       <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(#2ecc71_1.5px,transparent_1.5px)] [background-size:24px_24px]"></div>
@@ -200,14 +210,15 @@ export default function InteractiveLessonPage() {
       {/* PARLAQ NAV-BAR */}
       <div className="bg-white/90 border-b-4 border-slate-200 backdrop-blur-md px-6 py-3.5 flex items-center justify-between sticky top-0 z-50 shadow-sm">
         <button
-          onClick={() => navigateTo('/student/learning')}
+          onClick={goBackToMap}
           className="flex items-center gap-2 text-slate-500 hover:text-slate-700 font-black text-xs bg-white border-2 border-slate-200 hover:bg-slate-50 px-4 py-2.5 rounded-xl border-b-4 active:border-b-0 active:translate-y-[4px] transition-all cursor-pointer uppercase tracking-wider"
         >
           <ArrowLeft size={14} /> XƏRİTƏ
         </button>
 
         <div className="text-center">
-          <span className="text-[9px] font-black tracking-widest text-emerald-600 uppercase block">
+          {/* Səviyyəyə görə modulun etiket rəngi dəyişir */}
+          <span className="text-[9px] font-black tracking-widest uppercase block dynamic-student-label">
             {lesson.moduleTitle}
           </span>
           <h1 className="text-xs sm:text-sm font-black text-slate-800 m-0 uppercase tracking-tight">
@@ -227,42 +238,42 @@ export default function InteractiveLessonPage() {
 
             {/* HEYVAN AVATARI */}
             <div className="flex flex-col items-center flex-shrink-0">
-              <div className="w-18 h-18 rounded-full overflow-hidden border-4 border-emerald-400 bg-white shadow-md transition-transform duration-300 hover:scale-105">
+              <div className="w-18 h-18 rounded-full overflow-hidden border-4 bg-white shadow-md transition-transform duration-300 hover:scale-105 dynamic-mentor-box">
                 <img
-                  src={`/animals/${mentorAnimal.image}`}
-                  alt={mentorAnimal.nameAz}
+                  src={mentorAnimal.imagePath}
+                  alt={mentorAnimal.name}
                   className="w-full h-full object-cover"
                 />
               </div>
-              <span className="mt-1.5 bg-emerald-400 text-white font-black text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wide shadow-sm">
-                {mentorAnimal.nameAz}
+              <span className="mt-1.5 text-white font-black text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wide shadow-sm dynamic-mentor-badge">
+                {mentorAnimal.name}
               </span>
             </div>
 
-            {/* YAZILARI, VİDEONU VƏ CONTENTİ TUTAN BÖLMƏ (Avtomatik ardıcıl gəlir) */}
-            <div className="flex-1 bg-white border-3 border-emerald-300 p-5 rounded-[28px] rounded-tl-none shadow-md space-y-5 relative text-left animate-bubble-in">
+            {/* YAZILARI, VİDEONU VƏ CONTENTİ TUTAN BÖLMƏ */}
+            <div className="flex-1 bg-white border-3 p-5 rounded-[28px] rounded-tl-none shadow-md space-y-5 relative text-left animate-bubble-in dynamic-mentor-box">
 
               {/* Giriş Salamlaşma Mətni */}
-              <div className="bg-emerald-50 border-2 border-emerald-100 p-3 rounded-2xl flex gap-2 items-center">
-                <Smile className="text-emerald-500 flex-shrink-0" size={18} />
-                <p className="m-0 text-emerald-700 text-xs font-black font-mono leading-relaxed">
+              <div className="border-2 p-3 rounded-2xl flex gap-2 items-center dynamic-mentor-speech">
+                <Smile className="flex-shrink-0" size={18} />
+                <p className="m-0 text-xs font-black font-mono leading-relaxed">
                   {speechAnim.displayedText}
                   {!speechAnim.isFinished && (
-                    <span className="inline-block w-1.5 h-3.5 bg-emerald-500 ml-0.5 animate-pulse">|</span>
+                    <span className="inline-block w-1.5 h-3.5 ml-0.5 animate-pulse bg-current">|</span>
                   )}
                 </p>
               </div>
 
-              {/* VİDEO MESAJI (Giriş mətni bitən kimi avtomatik açılır) */}
+              {/* VİDEO MESAJI */}
               {lesson.videoUrl && speechAnim.isFinished && (
                 <div className="space-y-2 transition-all duration-500 animate-pop-in">
-                  <span className="text-[10px] font-black text-sky-500 uppercase tracking-wider flex items-center gap-1">
+                  {/* Başlıq rəngi səviyyəyə uyğunlaşır */}
+                  <span className="text-[10px] font-black uppercase tracking-wider flex items-center gap-1 dynamic-step-header">
                     <Video size={14} /> Addım 1: Mövzu İzah Videosu
                   </span>
 
                   <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-slate-900 border-3 border-slate-100 shadow-inner flex flex-col items-center justify-center p-6 text-center select-none group">
 
-                    {/* VİDEO VARSA (Real link gələndə bura işləyəcək) */}
                     {lesson.videoUrl == "coming_soon" && lesson.videoUrl.startsWith('http') ? (
                       <iframe
                         src={lesson.videoUrl}
@@ -272,9 +283,8 @@ export default function InteractiveLessonPage() {
                         allowFullScreen
                       />
                     ) : (
-                      /* VİDEO HƏLƏ YOXDURSA: Maraqlı Oyunvari Animasiyalı Ekran */
+                      /* VİDEO HƏLƏ YOXDURSA */
                       <div className="relative z-10 flex flex-col items-center gap-3 max-w-sm">
-                        {/* Animasiyalı sehrli popkorn/kino aparatı və ya emojilər */}
                         <div className="relative flex items-center justify-center">
                           <span className="text-5xl filter drop-shadow-md animate-bounce">🎬</span>
                           <span className="absolute -top-1 -right-2 text-2xl animate-pulse delay-100">✨</span>
@@ -290,22 +300,21 @@ export default function InteractiveLessonPage() {
                           </p>
                         </div>
 
-                        {/* Mini dekorativ yüklənmə xətti (Uşaqlar üçün vizual maraq) */}
                         <div className="w-32 h-2 bg-slate-800 rounded-full overflow-hidden p-[2px] border border-slate-700 mt-1">
                           <div className="h-full bg-gradient-to-r from-amber-400 to-emerald-400 rounded-full animate-[loadingBar_2s_infinite_linear] w-1/2" />
                         </div>
                       </div>
                     )}
 
-                    {/* Arxa fon üçün gizli neon işıq effekti (Sadəcə vizual gözəllik üçün) */}
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(56,189,248,0.08)_0%,transparent_70%)] pointer-events-none" />
                   </div>
                 </div>
               )}
-              {/* KONSPEKT / CONTENT (Video yükləndikdən sonra birbaşa gəlir, əlavə düymə yoxdur) */}
+
+              {/* KONSPEKT / CONTENT */}
               {speechAnim.isFinished && (
                 <div className="space-y-3 pt-3 border-t-2 border-slate-100 transition-all duration-700 animate-fade-in">
-                  <span className="text-[10px] font-black text-emerald-500 uppercase tracking-wider flex items-center gap-1">
+                  <span className="text-[10px] font-black uppercase tracking-wider flex items-center gap-1 dynamic-step-header">
                     <BookOpen size={14} /> Addım 2: Qısa Konspekt & Qeydlər
                   </span>
 
@@ -320,37 +329,43 @@ export default function InteractiveLessonPage() {
           </div>
         )}
 
-        {/* 👨‍🏫 ETAP 3: SAĞA MEYİLLİ STRUKTUR - MENTOR YAZISI BİTDİKDƏ GƏLƏN SİZİN AVATARINIZ VƏ BUTON */}
+        {/* 👨‍🏫 ETAP 3: SAĞA MEYİLLİ STRUKTUR */}
         {speechAnim.isFinished && (
           <div className="w-full flex items-start gap-5 self-end flex-row-reverse max-w-[94%] animate-student-layout">
 
-            {/* SİZİN AVATARINIZ (MENTOR AVATAR) */}
+            {/* ŞAGİRDİN AVATARI */}
             <div className="flex flex-col items-center flex-shrink-0 animate-pop-in">
-              <div className="w-18 h-18 rounded-full overflow-hidden border-4 border-sky-400 bg-white shadow-md flex items-center justify-center transition-transform duration-300 hover:scale-105">
+              <div className="w-18 h-18 rounded-full overflow-hidden border-4 bg-white shadow-md flex items-center justify-center transition-transform duration-300 hover:scale-105 dynamic-student-box">
                 <img
                   src={`/avatars/avatar-${userData?.avatar || 1}.png`}
                   alt={userData?.fullName || "QƏHRƏMAN"}
                   className="w-full h-full object-cover"
                 />
               </div>
-              <span className="mt-1.5 bg-sky-400 text-white font-black text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wide shadow-sm">
+              <span className="mt-1.5 text-white font-black text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wide shadow-sm dynamic-student-label" style={{ backgroundColor: 'var(--student-border)' }}>
                 {userData?.fullName || "QƏHRƏMAN"}
               </span>
             </div>
 
-            {/* SİZİN DİALOQ QUTUNUZ VƏ ARENA KEÇİD DÜYMƏSİ */}
-            <div className="flex-1 bg-white border-3 border-sky-300 p-5 rounded-[28px] rounded-tr-none shadow-md space-y-4 text-right animate-bubble-in">
+            {/* ŞAGİRDİN DİALOQ QUTUNUZ VƏ BUTONU */}
+            <div className="flex-1 bg-white border-3 p-5 rounded-[28px] rounded-tr-none shadow-md space-y-4 text-right animate-bubble-in dynamic-student-box">
               <div>
-                <span className="text-[9px] font-black text-sky-500 tracking-wider uppercase block mb-1">QƏHRƏMAN</span>
-                <p className="text-xs sm:text-sm font-black  m-0 leading-relaxed font-mono">
+                <span className="text-[9px] font-black tracking-wider uppercase block mb-1 dynamic-student-label">QƏHRƏMAN</span>
+                <p className="text-xs sm:text-sm font-black m-0 leading-relaxed font-mono">
                   "Çox sağ ol! Mühazirəni və izahı əla şəkildə bitirdim. Nəzəriyyə tərəfi tamdırsa, indi Arenaya keçib tapşırıqları həll edə bilərəm!"
                 </p>
               </div>
 
               <div className="flex justify-end pt-1">
+                {/* Səviyyəyə görə butonun kənar rəngləri və gradienti fərqli çalarlarda dolur */}
                 <button
                   onClick={handleCompleteLesson}
-                  className="w-full sm:w-auto bg-gradient-to-r from-emerald-400 to-teal-500 text-white px-10 py-4 text-xs font-black rounded-2xl border-b-[5px] border-emerald-600 active:border-b-0 active:translate-y-[5px] transition-all flex items-center justify-center gap-2 cursor-pointer uppercase tracking-widest shadow-md"
+                  className={`w-full sm:w-auto text-white px-10 py-4 text-xs font-black rounded-2xl border-b-[5px] active:border-b-0 active:translate-y-[5px] transition-all flex items-center justify-center gap-2 cursor-pointer uppercase tracking-widest shadow-md
+                    ${lesson?.level === 2 
+                      ? 'bg-gradient-to-r from-amber-500 to-orange-500 border-amber-700' 
+                      : 'bg-gradient-to-r from-emerald-400 to-teal-500 border-emerald-600'
+                    }
+                  `}
                 >
                   <Sword size={14} /> NÖVBƏTİ TAPŞIRIQLARA KEÇ 🚀
                 </button>
@@ -362,7 +377,7 @@ export default function InteractiveLessonPage() {
 
       </div>
 
-      {/* Tipoqrafiya, Kod Blokları və Arena Animasiyaları */}
+      {/* Global Stillər */}
       <style jsx global>{`
         .lesson-content-container h3 {
           font-size: 1.05rem;
@@ -385,7 +400,6 @@ export default function InteractiveLessonPage() {
           margin-bottom: 0.4rem;
         }
         
-        /* Dark Mono C++ Kod Qutusu (Arena Harmoniyası) */
         .lesson-content-container .code-box {
           background-color: #1e1e2e;
           color: #cdd6f4;
@@ -405,7 +419,6 @@ export default function InteractiveLessonPage() {
         .lesson-content-container .code-box .type { color: #fab387; }
         .lesson-content-container .code-box .function { color: #89b4fa; }
         
-        /* Tip Box */
         .lesson-content-container .tip-box {
           background-color: #e0f2fe;
           border: 2px solid #bae6fd;
@@ -418,7 +431,6 @@ export default function InteractiveLessonPage() {
           font-family: sans-serif !important;
         }
 
-        /* Arenadan Gələn Animasiya Çəkiləri */
         @keyframes avatarLeft {
           from { transform: translateX(-30px); opacity: 0; }
           to { transform: translateX(0); opacity: 1; }

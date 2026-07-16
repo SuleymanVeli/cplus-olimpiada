@@ -588,7 +588,7 @@ export default function JungleGamingPath() {
           onClick={() => navigateTo('/student/dashboard')}
           className="absolute top-5 left-5 bg-white px-8 py-3.5 hover:translate-y-[-2px] cursor-pointer rounded-full border-b-[5px] border-slate-200 z-10 whitespace-nowrap text-emerald-800 font-black text-sm md:text-base shadow-lg tracking-wide transition-all"
         >
-          🌲 Meşəyə Qayıt
+          🌲 Xəritəyə qayıt
         </button>
 
         {/* Üst Panel */}

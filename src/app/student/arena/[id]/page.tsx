@@ -8,35 +8,13 @@ import confetti from 'canvas-confetti';
 import { useTransition } from '@/src/context/TransitionContext';
 import { useUser } from '@/src/context/UserContext';
 import { ArrowLeft, Code2, Play, AlertTriangle, Smile } from 'lucide-react';
-
-const animalsData = [
-  { id: 1, nameAz: "Canavar", nameEn: "Wolf", image: "1.jpg" },
-  { id: 2, nameAz: "Kirpi", nameEn: "Hedgehog", image: "2.jpg" },
-  { id: 3, nameAz: "Ayı", nameEn: "Bear", image: "3.jpg" },
-  { id: 4, nameAz: "Tısbağa", nameEn: "Turtle", image: "4.jpg" },
-  { id: 5, nameAz: "Bəbir", nameEn: "Leopard", image: "5.jpg" },
-  { id: 6, nameAz: "Sincab (Zolaqlı)", nameEn: "Chipmunk", image: "6.jpg" },
-  { id: 7, nameAz: "Maral", nameEn: "Deer", image: "7.jpg" },
-  { id: 8, nameAz: "Bayquş", nameEn: "Owl", image: "8.jpg" },
-  { id: 9, nameAz: "Sığın", nameEn: "Moose", image: "9.jpg" },
-  { id: 10, nameAz: "Dələ", nameEn: "Squirrel", image: "10.jpg" },
-  { id: 11, nameAz: "Bizon", nameEn: "Bison", image: "11.jpg" },
-  { id: 12, nameAz: "Tənbəllər", nameEn: "Sloth", image: "12.jpg" },
-  { id: 13, nameAz: "Surikat", nameEn: "Meerkat", image: "13.jpg" }
-];
+import { animalsDataAdventurers, animalsDataForest, animalsDataForests, AnimalType } from '@/src/lib/constants';
 
 interface TestCase {
   _id?: string;
   input: string;
   output: string;
   isSample: boolean;
-}
-
-interface AnimalType {
-  id: number;
-  nameAz: string;
-  nameEn: string;
-  image: string;
 }
 
 interface TaskData {
@@ -138,9 +116,12 @@ export default function DynamicArenaPage() {
           const data = result.data.task || result.data;
           setTask(data);
 
-          const assignedAnimal = animalsData[(data.order || 0) % animalsData.length];
+          const assignedAnimal = data.level === 1
+            ? animalsDataForests[(data.order || 0) % animalsDataForests.length]            
+            : animalsDataAdventurers[(data.order || 0) % animalsDataAdventurers.length];
+
           setMentorAnimal(assignedAnimal);
-          setMentorSpeech(`Salam, xoş gəldin! 🎉 Mən sehrli meşənin mühafizəçisi ${assignedAnimal.nameAz}. Sənin üçün super bir tapşırığım var! Gəl şərtləri birlikdə nəzərdən keçirək: ✨`);
+          setMentorSpeech(`Salam, xoş gəldin! 🎉 Mən sehrli meşənin mühafizəçisi ${assignedAnimal.name}. Sənin üçün super bir tapşırığım var! Gəl şərtləri birlikdə nəzərdən keçirək: ✨`);
 
           setEditorValue(`#include <iostream>\nusing namespace std;\n\nint main() {\n    // Kodunu bura yaza bilərsən 📝\n    \n    return 0;\n}`);
 
@@ -162,8 +143,10 @@ export default function DynamicArenaPage() {
     }
   }, [taskId, userData?._id]);
 
+  console.log(userData)
+
   const goBackToMap = () => {
-    switch (userData?.level) {
+    switch (task?.level) {
       case 1:
         navigateTo('/student/learning');
         break;
@@ -287,7 +270,7 @@ const validateCode = async () => {
   const sampleCase = task?.testCases?.find(c => c.isSample);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#eef9f1] via-[#f4fbf7] to-[#ffffff] text-slate-700 font-sans select-none pb-20 relative">
+    <div className={`min-h-screen dynamic-arena-bg ${task?.level === 2 ? 'level-2-theme' : 'level-1-theme'} text-slate-700 font-sans select-none pb-20 relative`}>
 
       {/* Şən Bulud Arxa Fon Dekorasiyası */}
       <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(#2ecc71_1.5px,transparent_1.5px)] [background-size:24px_24px]"></div>
@@ -302,7 +285,8 @@ const validateCode = async () => {
         </button>
 
         <div className="flex items-center gap-2">
-          <span className="font-black text-emerald-600 text-sm bg-emerald-50 border-2 border-emerald-200 px-4 py-1.5 rounded-xl uppercase tracking-wide shadow-sm">
+          {/* Səviyyəyə görə mətndəki badge rəngi dəyişir */}
+          <span className="font-black text-sm px-4 py-1.5 rounded-xl uppercase tracking-wide shadow-sm border-2 dynamic-mentor-speech">
             🎯 ARENA TAPŞIRIĞI #{task?.order}
           </span>
         </div>
@@ -315,34 +299,37 @@ const validateCode = async () => {
       {/* 🗺️ DIALOG AXINI */}
       <div className="max-w-4xl mx-auto px-4 mt-8 space-y-8 flex flex-col">
 
-        {/* 🦊 ETAP 1 & 2: SOLA MEYİLLİ MENTOR HEYVANO VE ONUN METNLERİ */}
+        {/* 🦊 ETAP 1 & 2: SOLA MEYİLLİ MENTOR HEYVANI */}
         {mentorAnimal && (
           <div className="w-full flex items-start gap-5 animate-avatar-left self-start max-w-[88%]">
 
             {/* HEYVAN AVATARI */}
             <div className="flex flex-col items-center flex-shrink-0">
-              <div className="w-18 h-18 rounded-full overflow-hidden border-4 border-emerald-400 bg-white shadow-md transition-transform duration-300 hover:scale-105">
+              {/* Avatar border-i dəyişir */}
+              <div className="w-18 h-18 rounded-full overflow-hidden border-4 bg-white shadow-md transition-transform duration-300 hover:scale-105 dynamic-mentor-box">
                 <img
-                  src={`/animals/${mentorAnimal.image}`}
-                  alt={mentorAnimal.nameAz}
+                  src={mentorAnimal.imagePath}
+                  alt={mentorAnimal.name}
                   className="w-full h-full object-cover"
                 />
               </div>
-              <span className="mt-1.5 bg-emerald-400 text-white font-black text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wide shadow-sm">
-                {mentorAnimal.nameAz}
+              {/* Balaca ad etiketi rəngi dəyişir */}
+              <span className="mt-1.5 text-white font-black text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wide shadow-sm dynamic-mentor-badge">
+                {mentorAnimal.name}
               </span>
             </div>
 
             {/* YAZILARI OLAN BÖLMƏ */}
-            <div className="flex-1 bg-white border-3 border-emerald-300 p-5 rounded-[28px] rounded-tl-none shadow-md space-y-4 relative text-left animate-bubble-in">
+            {/* Böyük qutunun border-i dəyişir */}
+            <div className="flex-1 bg-white border-3 p-5 rounded-[28px] rounded-tl-none shadow-md space-y-4 relative text-left animate-bubble-in dynamic-mentor-box">
 
-              {/* Salamlaşma və ya Yoxlama Mətni */}
-              <div className="bg-emerald-50 border-2 border-emerald-100 p-3 rounded-2xl flex gap-2 items-center">
-                <Smile className="text-emerald-500 flex-shrink-0" size={18} />
-                <p className="m-0 text-emerald-700 text-xs font-black font-mono leading-relaxed">
+              {/* Salamlaşma və ya Yoxlama Mətni - daxili fon və mətn rəngi dəyişir */}
+              <div className="border-2 p-3 rounded-2xl flex gap-2 items-center dynamic-mentor-speech">
+                <Smile className="flex-shrink-0" size={18} />
+                <p className="m-0 text-xs font-black font-mono leading-relaxed">
                   {validationMessage ? validationMessage : speechAnim.displayedText}
                   {!speechAnim.isFinished && !validationMessage && (
-                    <span className="inline-block w-1.5 h-3.5 bg-emerald-500 ml-0.5 animate-pulse">|</span>
+                    <span className="inline-block w-1.5 h-3.5 ml-0.5 animate-pulse bg-current">|</span>
                   )}
                 </p>
               </div>
@@ -351,7 +338,8 @@ const validateCode = async () => {
               {(speechAnim.isFinished || descAnim.displayedText) && (
                 <div className="space-y-1.5 transition-all duration-300 animate-fade-in">
                   <h3 className="text-base font-black text-slate-800 flex items-center gap-1.5 m-0 uppercase tracking-tight">
-                    <Code2 size={18} className="text-emerald-500" /> {task?.title}
+                    {/* İkon rəngi levelə görə dəyişən badge rəngini alır */}
+                    <Code2 size={18} className="dynamic-student-label" /> {task?.title}
                   </h3>
                   <div className="text-slate-600 font-bold text-xs leading-relaxed whitespace-pre-wrap font-mono">
                     {descAnim.displayedText}
@@ -381,7 +369,6 @@ const validateCode = async () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t-2 border-slate-100 transition-all duration-300 animate-fade-in">
                   <div className="bg-sky-50 p-3 rounded-xl border-2 border-sky-100">
                     <span className="font-black text-sky-500 text-[10px] uppercase tracking-wider block mb-0.5">Nə daxil olacaq? (Giriş)</span>
-                    {/* whitespace-pre-wrap əlavə edildi */}
                     <p className="text-slate-600 text-xs font-mono font-bold m-0 leading-tight whitespace-pre-wrap">
                       {inputAnim.displayedText}
                       {!inputAnim.isFinished && descAnim.isFinished && (
@@ -391,7 +378,6 @@ const validateCode = async () => {
                   </div>
                   <div className="bg-purple-50 p-3 rounded-xl border-2 border-purple-100">
                     <span className="font-black text-purple-500 text-[10px] uppercase tracking-wider block mb-0.5">Ekrana nə çıxacaq? (Çıxış)</span>
-                    {/* whitespace-pre-wrap əlavə edildi */}
                     <p className="text-slate-600 text-xs font-mono font-bold m-0 leading-tight whitespace-pre-wrap">
                       {outputAnim.displayedText}
                       {!outputAnim.isFinished && inputAnim.isFinished && (
@@ -405,12 +391,10 @@ const validateCode = async () => {
               {/* Nümunə Test Bloku */}
               {sampleCase && isIntroDone && (
                 <div className="flex flex-col sm:flex-row gap-3 pt-1 transition-all duration-500 animate-pop-in">
-                  {/* whitespace-pre-wrap əlavə edildi */}
                   <div className="flex-1 bg-slate-900 text-emerald-400 p-3 rounded-xl font-mono text-xs shadow-inner whitespace-pre-wrap">
                     <span className="text-[9px] text-slate-400 font-sans font-black block mb-0.5 uppercase">Nümunə Giriş:</span>
                     {sampleCase.input}
                   </div>
-                  {/* whitespace-pre-wrap əlavə edildi */}
                   <div className="flex-1 bg-slate-900 text-sky-400 p-3 rounded-xl font-mono text-xs shadow-inner whitespace-pre-wrap">
                     <span className="text-[9px] text-slate-400 font-sans font-black block mb-0.5 uppercase">Nümunə Çıxış:</span>
                     {sampleCase.output}
@@ -427,23 +411,25 @@ const validateCode = async () => {
 
             {/* ŞAGİRDİN AVATARI */}
             <div className="flex flex-col items-center flex-shrink-0 animate-pop-in">
-              <div className="w-18 h-18 rounded-full overflow-hidden border-4 border-sky-400 bg-white shadow-md flex items-center justify-center transition-transform duration-300 hover:scale-105">
+              {/* Şagird avatarının border rəngi səviyyəyə uyğun dəyişir */}
+              <div className="w-18 h-18 rounded-full overflow-hidden border-4 bg-white shadow-md flex items-center justify-center transition-transform duration-300 hover:scale-105 dynamic-student-box">
                 <img
                   src={`/avatars/avatar-${userData?.avatar || 1}.png`}
                   alt={userData?.fullName || "Qəhrəman"}
                   className="w-full h-full object-cover"
                 />
               </div>
-              <span className="mt-1.5 bg-sky-400 text-white font-black text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wide shadow-sm">
+              <span className="mt-1.5 text-white font-black text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wide shadow-sm dynamic-student-label" style={{ backgroundColor: 'var(--student-border)' }}>
                 {userData?.fullName || "QƏHRƏMAN"}
               </span>
             </div>
 
             {/* EDİTÖRÜ VƏ CAVAB DÜYMƏLƏRİ OLAN HİSSƏ */}
-            <div className="flex-1 bg-white border-3 border-sky-300 p-5 rounded-[28px] rounded-tr-none shadow-md space-y-4 text-right animate-bubble-in">
+            {/* Sağ böyük qutunun border rəngi səviyyəyə uyğun dəyişir */}
+            <div className="flex-1 bg-white border-3 p-5 rounded-[28px] rounded-tr-none shadow-md space-y-4 text-right animate-bubble-in dynamic-student-box">
 
               <div className="text-left">
-                <span className="text-[10px] font-black uppercase text-sky-500 tracking-wider block mb-1">💻 SƏNİN SEHRLİ C++ KODUN:</span>
+                <span className="text-[10px] font-black uppercase tracking-wider block mb-1 dynamic-student-label">💻 SƏNİN SEHRLİ C++ KODUN:</span>
                 <div className="rounded-2xl overflow-hidden border-3 border-slate-200 shadow-sm bg-white task-editor min-h-[350px]">
                   <CodeMirror
                     value={editorValue}

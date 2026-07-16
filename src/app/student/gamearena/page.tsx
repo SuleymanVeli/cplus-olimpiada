@@ -6,7 +6,7 @@ import { useUser } from '@/src/context/UserContext';
 import { useTransition } from '@/src/context/TransitionContext';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
-import { animalsData } from '@/src/lib/constants';
+import { animalsDataForest as animalsData } from '@/src/lib/constants';
 
 export default function GamesGrid() {
   const [games, setGames] = useState<any[]>([]);
