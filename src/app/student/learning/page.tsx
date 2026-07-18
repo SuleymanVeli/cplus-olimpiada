@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTransition } from '@/src/context/TransitionContext';
 import { useUser } from '@/src/context/UserContext'; // 🚀 Sizin real User Context-iniz
+import { useSFX } from '@/src/hooks/useSFX';
 
 interface TaskNode {
   _id: string;
@@ -37,6 +38,8 @@ export default function GamingPath() {
   const avatarImgRef = useRef<HTMLImageElement | null>(null);
   const { navigateTo, endTransition } = useTransition();
 
+  const { playSFX } = useSFX();
+
   // 🚀 Şagirdin real avatar məlumatını gətiririk
   const { userData } = useUser();
   const avatarSrc = `/avatars/avatar-${userData?.avatar || 1}.png`;
@@ -67,8 +70,6 @@ export default function GamingPath() {
     isLeftSide: boolean;
     state: 'completed' | 'active' | 'locked';
   } | null>(null);
-
-  console.log(userData)
 
   // --- 1. API-dən MƏLUMATLARIN ÇƏKİLMƏSİ ---
   useEffect(() => {
@@ -102,7 +103,7 @@ export default function GamingPath() {
     }
 
     function generateMockFallback() {
-      const mock:any = Array.from({ length: 15 }, (_, i) => {
+      const mock: any = Array.from({ length: 15 }, (_, i) => {
         const isLesson = i % 5 === 0;
         return {
           _id: `mock_${i}`,
@@ -480,6 +481,7 @@ export default function GamingPath() {
           ctx.strokeStyle = '#ffffff';
           ctx.stroke();
         } else {
+          playSFX('btn3', 0.5);
           ctx.font = '32px Arial';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
@@ -523,6 +525,7 @@ export default function GamingPath() {
           // 🚀 Kliklənən nöqtənin sırasına uyğun heyvanı seçirik
           const assignedAnimal = animalsData[i % animalsData.length];
 
+          playSFX('btn3', 0.5);
           setActiveNode({
             id: target._id,
             _id: target._id,
@@ -566,14 +569,20 @@ export default function GamingPath() {
     // 🚀 dependency array-ə avatarSrc izlənməsini əlavə etdik
   }, [loading, nodes, currentActiveIndex, avatarSrc]);
 
-  const startTask = (node: any) => {
+  const startTask = (node: any) => {    
     if (!node) return;
+    playSFX('btn1', 0.5);
     if (node.type === 'lesson') {
       navigateTo(`/student/lessons/${node._id}`);
     } else {
       navigateTo(`/student/arena/${node._id}`);
     }
   };
+
+  const goToMap = () => {
+    playSFX('btn1', 0.5);
+    navigateTo('/student/dashboard');
+  }
 
   if (loading) {
     return (
@@ -592,7 +601,7 @@ export default function GamingPath() {
 
         {/* Dashboarda geri donme, shadow olsun */}
         <button
-          onClick={() => navigateTo('/student/dashboard')}
+          onClick={goToMap}
           className="absolute top-5 left-5 bg-white px-8 py-3.5 hover:translate-y-[-2px] cursor-pointer rounded-full border-b-[5px] border-slate-200 z-10 whitespace-nowrap text-slate-700 font-black text-sm md:text-base shadow-lg tracking-wide"
         >
           🏠 Xəritəyə qayıt

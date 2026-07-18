@@ -9,6 +9,7 @@ import { useTransition } from '@/src/context/TransitionContext';
 import { useUser } from '@/src/context/UserContext';
 import { ArrowLeft, Code2, Play, AlertTriangle, Smile } from 'lucide-react';
 import { animalsDataAdventurers, animalsDataForest, animalsDataForests, AnimalType } from '@/src/lib/constants';
+import { useSFX } from '@/src/hooks/useSFX';
 
 interface TestCase {
   _id?: string;
@@ -70,6 +71,8 @@ export default function DynamicArenaPage() {
   const { navigateTo, endTransition } = useTransition();
   const { userData } = useUser();
 
+  const { playSFX } = useSFX();
+
   // API & Mentor States
   const [task, setTask] = useState<TaskData | null>(null);
   const [mentorAnimal, setMentorAnimal] = useState<AnimalType | null>(null);
@@ -117,7 +120,7 @@ export default function DynamicArenaPage() {
           setTask(data);
 
           const assignedAnimal = data.level === 1
-            ? animalsDataForests[(data.order || 0) % animalsDataForests.length]            
+            ? animalsDataForests[(data.order || 0) % animalsDataForests.length]
             : animalsDataAdventurers[(data.order || 0) % animalsDataAdventurers.length];
 
           setMentorAnimal(assignedAnimal);
@@ -143,9 +146,8 @@ export default function DynamicArenaPage() {
     }
   }, [taskId, userData?._id]);
 
-  console.log(userData)
-
   const goBackToMap = () => {
+    playSFX('btn2', 0.5);
     switch (task?.level) {
       case 1:
         navigateTo('/student/learning');
@@ -158,7 +160,7 @@ export default function DynamicArenaPage() {
     }
   };
 
-const validateCode = async () => {
+  const validateCode = async () => {
     if (!task || !task.testCases || task.testCases.length === 0) return;
     setAllPassed(false);
     setCompilerError(null);
@@ -174,6 +176,8 @@ const validateCode = async () => {
 
       const currentCase = task.testCases[i];
 
+      playSFX('loading', 0.5);
+
       try {
         // Birbaşa öz yaratdığımız Next.js API-nə sorğu atırıq
         const response = await fetch("/api/compiler", {
@@ -188,6 +192,8 @@ const validateCode = async () => {
         const result = await response.json();
 
         if (result.compiler_error) {
+          playSFX('error', 0.5);
+
           currentStatuses[i] = 'failed';
           setCompilerError(result.compiler_error);
           isEverythingCorrect = false;
@@ -201,12 +207,15 @@ const validateCode = async () => {
         if (actualOutput === expectedOutput) {
           currentStatuses[i] = 'passed';
         } else {
+          playSFX('error', 0.5);
+
           currentStatuses[i] = 'failed';
           isEverythingCorrect = false;
           setValidationMessage(`Oy, haradasa nəsə qarışdı! 🦊 Kodun bəzi gizli testlərdən keçə bilmədi. Nümunələrə baxıb bir daha yoxla!`);
           break;
         }
       } catch (error) {
+        playSFX('error', 0.5);
         currentStatuses[i] = 'failed';
         isEverythingCorrect = false;
         setValidationMessage(`Sistemdə müvəqqəti nasazlıq oldu. 🦊 Bir neçə saniyə sonra yenidən yoxla!`);
@@ -222,6 +231,8 @@ const validateCode = async () => {
       confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
       setAllPassed(true);
       setValidationMessage(`Uraaa! 🎉 Möhtəşəmsən! Bütün sınaq testlərindən uğurla keçdin. Sən əsl kod sehrbazısan! 🌟`);
+
+      playSFX('success', 0.2);
 
       try {
         await fetch('/api/student/progress', {

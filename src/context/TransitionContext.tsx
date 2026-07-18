@@ -7,15 +7,44 @@ type TransitionContextType = {
   isTransitioning: boolean;
   navigateTo: (href: string) => void;
   endTransition: () => void; // 🚀 Səhifələrin çağıracağı yeni sehrli funksiya
+  currentTrack: string; // 🚀 Hazırda aktiv olan musiqi faylı
+  isMusicAllowed: boolean; // 🚀 İstifadəçi "Sehrli Meşəyə Daxil Ol" düyməsini basıbmı?
+  allowMusic: () => void; // 🚀 Giriş icazəsi funksiyası
 };
 
 const TransitionContext = createContext<TransitionContextType | undefined>(undefined);
 
+const getTrackForPath = (path: string): string => {
+  // Dinamik ID-ləri idarə etmək üçün regex və ya sadə axtarışdan istifadə edirik
+  if (path === '/' || path === '/student/dashboard') {
+    return '/audio/bg/bg.mp3';
+  }  
+  if (path.startsWith('/student/adventure') || path.includes('/student/learning')) {
+    return '/audio/bg/bg4.mp3';
+  }
+  if (path.startsWith('/student/gamearena') || path.includes('/student/arena/') ||  path.includes('/student/lessons/')) {
+    return '/audio/bg/bg2.mp3';
+  }
+  
+  // Default olaraq lobby musiqisi
+  return '/audio/bg/bg.mp3';
+};
+
 export function TransitionProvider({ children }: { children: React.ReactNode }) {
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isMusicAllowed, setIsMusicAllowed] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
+  
+  // Hazırkı səhifəyə uyğun musiqi yolunu dövlət kimi saxlayırıq
+  const [currentTrack, setCurrentTrack] = useState(() => getTrackForPath(pathname));
+  
   const fallbackTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // İstifadəçi ilk popup-da icazə verəndə çağırılır
+  const allowMusic = () => {
+    setIsMusicAllowed(true);
+  };
 
   const navigateTo = (href: string) => {
     if (isTransitioning || pathname === href) return;
@@ -23,31 +52,30 @@ export function TransitionProvider({ children }: { children: React.ReactNode }) 
     // 1. Buludları ekrana doğru gətir (bağlanma animasiyası)
     setIsTransitioning(true);
 
-    // 2. Buludlar tam qapananda route-u dəyiş
+    // 2. Buludlar tam qapananda (600ms sonra) route-u dəyiş və musiqini dəyişdir
     setTimeout(() => {
+      // Keçid edilən yeni səhifənin musiqi faylını təyin edirik
+      const nextTrack = getTrackForPath(href);
+      setCurrentTrack(nextTrack);
+      
       router.push(href);
     }, 600); 
   };
 
-  // 🚀 Səhifə datanı fetch edib qurtaranda bu funksiyanı çağıracaq
   const endTransition = () => {
-    // Əgər aktiv fallback taymeri varsa, təmizləyirik
     if (fallbackTimerRef.current) {
       clearTimeout(fallbackTimerRef.current);
       fallbackTimerRef.current = null;
     }
 
-    // Kiçik bir gecikmə ilə buludları açırıq ki, yeni komponent DOM-a rahat otursun
+    // Buludları rəvan şəkildə açırıq
     setTimeout(() => {
       setIsTransitioning(false);
     }, 150);
   };
 
-  // Səhifə dəyişən an arxa planda bir təhlükəsizlik taymeri başladırıq
-  // Əgər hansısa səhifədə API xəta versə və endTransition çağırılmasa, bulud əbədi bağlı qalmasın
   useEffect(() => {
     if (isTransitioning) {
-      // Əgər 4 saniyə ərzində səhifə yüklənməsə, buludları məcburi aç
       fallbackTimerRef.current = setTimeout(() => {
         setIsTransitioning(false);
       }, 4000);
@@ -58,40 +86,38 @@ export function TransitionProvider({ children }: { children: React.ReactNode }) 
     };
   }, [pathname, isTransitioning]);
 
-
   // =======================================================
-  // 🚀 BRAUZERİN GERİ/İRƏLİ OX İDARƏSİ (POPSTATE)
+  // 🚀 BRAUZERİN GERİ/İRƏLİ OX IDARƏSİ (POPSTATE) SİNXRONİZASİYASI
   // =======================================================
   useEffect(() => {
     const handlePopState = () => {
-      // 1. Brauzerin səhifəni "sərt" şəkildə dərhal dəyişməsinin qarşısını alırıq
       window.history.pushState(null, '', window.location.href);
-
-      // 2. Keçid edilmək istənən real hədəf URL-ni brauzerdən oxuyuruq
       const targetUrl = window.location.pathname;
 
       if (pathname === targetUrl) return;
 
-      // 3. Bulud qapılarını bağlamağa başlayırıq
       setIsTransitioning(true);
 
-      // 4. Sənin buludların qapanma müddəti (600ms) bitəndə Next.js router ilə səhifəni dəyişirik
       setTimeout(() => {
+        const nextTrack = getTrackForPath(targetUrl);
+        setCurrentTrack(nextTrack);
         router.replace(targetUrl); 
-        // Qeyd: replace istifadə edirik ki, tarixçədə (history) sonsuz döngü yaranmasın
       }, 600);
     };
 
-    // Dinləyicini aktiv edirik
     window.addEventListener('popstate', handlePopState);
-    
     return () => {
       window.removeEventListener('popstate', handlePopState);
     };
   }, [pathname, router]);
 
   return (
-    <TransitionContext.Provider value={{ isTransitioning, navigateTo, endTransition }}>
+    <TransitionContext.Provider value={{ isTransitioning, 
+      navigateTo, 
+      endTransition, 
+      currentTrack, 
+      isMusicAllowed, 
+      allowMusic }}>
        {/* =======================================================
           3D PREMIUM ÇOXQATLI BULUD KEÇİDİ (PREMIUM CLOUD OVERLAY)
          ======================================================= */}

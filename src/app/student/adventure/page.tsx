@@ -2,7 +2,8 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useTransition } from '@/src/context/TransitionContext';
-import { useUser } from '@/src/context/UserContext'; 
+import { useUser } from '@/src/context/UserContext';
+import { useSFX } from '@/src/hooks/useSFX';
 
 interface TaskNode {
   _id: string;
@@ -16,20 +17,22 @@ interface TaskNode {
 
 // 🐆 Səviyyə 2 loqosuna uyğun tropik cəngəllik heyvanları
 const animalsData = [
-    { id: 1, name: "Leo", type: "Bəbir (Jaguar)", powerLevel: 85, imagePath: "/jungle/1.png", skill: "Sürətli Qaçış" },
-    { id: 2, name: "Coco", type: "Tutuquşu (Macaw)", powerLevel: 45, imagePath: "/jungle/2.png", skill: "Yüksəkdən Uçuş" },
-    { id: 3, name: "Tiki", type: "Tukan (Toucan)", powerLevel: 50, imagePath: "/jungle/3.png", skill: "Meyvə Tapmaq" },
-    { id: 4, name: "Momo", type: "Meymun (Monkey)", powerLevel: 65, imagePath: "/jungle/4.png", skill: "Ağaca Dırmaşmaq" },
-    { id: 5, name: "Lemmy", type: "Lemur (Lemur)", powerLevel: 55, imagePath: "/jungle/5.png", skill: "Gecə Görməsi" },
-    { id: 6, name: "Snappy", type: "Timsah (Crocodile)", powerLevel: 90, imagePath: "/jungle/6.png", skill: "Güclü Dişləmə" },
-    { id: 7, name: "Cappy", type: "Kapibara (Capybara)", powerLevel: 40, imagePath: "/jungle/7.png", skill: "Sakitləşdirmə" },
-    { id: 8, name: "Coati", type: "Koati (Nasua)", powerLevel: 60, imagePath: "/jungle/8.png", skill: "Gizli Qoxulama" }
+  { id: 1, name: "Leo", type: "Bəbir (Jaguar)", powerLevel: 85, imagePath: "/jungle/1.png", skill: "Sürətli Qaçış" },
+  { id: 2, name: "Coco", type: "Tutuquşu (Macaw)", powerLevel: 45, imagePath: "/jungle/2.png", skill: "Yüksəkdən Uçuş" },
+  { id: 3, name: "Tiki", type: "Tukan (Toucan)", powerLevel: 50, imagePath: "/jungle/3.png", skill: "Meyvə Tapmaq" },
+  { id: 4, name: "Momo", type: "Meymun (Monkey)", powerLevel: 65, imagePath: "/jungle/4.png", skill: "Ağaca Dırmaşmaq" },
+  { id: 5, name: "Lemmy", type: "Lemur (Lemur)", powerLevel: 55, imagePath: "/jungle/5.png", skill: "Gecə Görməsi" },
+  { id: 6, name: "Snappy", type: "Timsah (Crocodile)", powerLevel: 90, imagePath: "/jungle/6.png", skill: "Güclü Dişləmə" },
+  { id: 7, name: "Cappy", type: "Kapibara (Capybara)", powerLevel: 40, imagePath: "/jungle/7.png", skill: "Sakitləşdirmə" },
+  { id: 8, name: "Coati", type: "Koati (Nasua)", powerLevel: 60, imagePath: "/jungle/8.png", skill: "Gizli Qoxulama" }
 ];
 
 export default function JungleGamingPath() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const avatarImgRef = useRef<HTMLImageElement | null>(null);
   const { navigateTo, endTransition } = useTransition();
+
+  const { playSFX } = useSFX();
 
   const { userData } = useUser();
   const avatarSrc = `/avatars/avatar-${userData?.avatar || 1}.png`;
@@ -96,7 +99,7 @@ export default function JungleGamingPath() {
           type: isLesson ? 'lesson' : 'task',
           title: isLesson ? 'Orta Səviyyə C++ Nəzəriyyəsi' : `Cəngəllik Tapşırığı ${i}`,
           order: isLesson ? 0 : (i % 5),
-          points: isLesson ? 0 : 20, 
+          points: isLesson ? 0 : 20,
           status: i < 4 ? 'completed' : i === 4 ? 'active' : 'locked',
           moduleTitle: i < 5 ? 'STRUKTURLAR VƏ ARRAYS' : 'POINTERS VƏ FUNCTIONS',
         };
@@ -104,8 +107,8 @@ export default function JungleGamingPath() {
       setNodes(mock);
       setCurrentActiveIndex(4);
     }
-      
-    if(userData?._id) {
+
+    if (userData?._id) {
       fetchMapData();
     }
   }, [userData]);
@@ -119,14 +122,14 @@ export default function JungleGamingPath() {
 
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx:any = canvas.getContext('2d');
+    const ctx: any = canvas.getContext('2d');
     if (!ctx) return;
 
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
     const totalNodes = nodes.length;
-    const spacing = 135; 
+    const spacing = 135;
     const mapHeight = totalNodes * spacing + 300;
 
     let scrollY = Math.max(
@@ -185,7 +188,7 @@ export default function JungleGamingPath() {
       let pathX = getX(nodeIndexEstimation);
 
       // Cığır üzərinə ağac düşməməsi üçün sıx təmizləmə zonası
-      if (Math.abs(x - pathX) < 90) { 
+      if (Math.abs(x - pathX) < 90) {
         x = x < pathX ? x - 110 : x + 110;
       }
 
@@ -221,18 +224,18 @@ export default function JungleGamingPath() {
         ctx!.lineWidth = size / 5;
         ctx!.beginLines ? ctx!.beginLines() : ctx!.beginPath();
         ctx!.moveTo(x, y);
-        ctx!.quadraticCurveTo(x - size/4, y - size/2, x - size/5, y - size * 1.2);
+        ctx!.quadraticCurveTo(x - size / 4, y - size / 2, x - size / 5, y - size * 1.2);
         ctx!.stroke();
 
         ctx!.fillStyle = color;
-        const topX = x - size/5;
+        const topX = x - size / 5;
         const topY = y - size * 1.2;
         for (let j = 0; j < 5; j++) {
           ctx!.save();
           ctx!.translate(topX, topY);
           ctx!.rotate((j * Math.PI) / 2.5 + animationFrame * 0.03);
           ctx!.beginPath();
-          ctx!.ellipse(size/2, 0, size * 0.55, size / 3, 0, 0, Math.PI * 2);
+          ctx!.ellipse(size / 2, 0, size * 0.55, size / 3, 0, 0, Math.PI * 2);
           ctx!.fill();
           ctx!.restore();
         }
@@ -240,13 +243,13 @@ export default function JungleGamingPath() {
         // Normal şirin karikatura ağacı gövdəsi
         ctx!.fillStyle = '#7f5539';
         ctx!.fillRect(x - size / 10, y - size / 1.5, size / 5, size / 1.5);
-        
+
         // Üst-üstə qatlanan parlaq yarpaq qatları
         ctx!.fillStyle = color;
-        ctx!.beginPath(); ctx!.arc(x - size/3, y - size * 0.9, size / 1.5, 0, Math.PI * 2); ctx!.fill();
-        ctx!.beginPath(); ctx!.arc(x + size/3, y - size * 0.9, size / 1.5, 0, Math.PI * 2); ctx!.fill();
+        ctx!.beginPath(); ctx!.arc(x - size / 3, y - size * 0.9, size / 1.5, 0, Math.PI * 2); ctx!.fill();
+        ctx!.beginPath(); ctx!.arc(x + size / 3, y - size * 0.9, size / 1.5, 0, Math.PI * 2); ctx!.fill();
         ctx!.beginPath(); ctx!.arc(x, y - size * 1.3, size / 1.3, 0, Math.PI * 2); ctx!.fill();
-        
+
         // Parlaq işıq effekti (Ağacların üstünə açıq ton)
         ctx!.fillStyle = 'rgba(255,255,255,0.15)';
         ctx!.beginPath(); ctx!.arc(x, y - size * 1.35, size / 2, 0, Math.PI * 2); ctx!.fill();
@@ -275,18 +278,18 @@ export default function JungleGamingPath() {
       // 🗺️ Cığırın çəkilməsi - Referans şəkildəki sarımtıl qum/daş patika yolu
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
-      
+
       // Alt Qat (Yolun kənarındakı tünd torpaq haşiyə)
       ctx.beginPath();
       ctx.lineWidth = 85;
-      ctx.strokeStyle = '#b48a53'; 
+      ctx.strokeStyle = '#b48a53';
       for (let i = 0; i < totalNodes; i++) ctx.lineTo(getX(i), getY(i) + 3);
       ctx.stroke();
 
       // Üst Qat (Referans şəkildəki əsas parlaq qum sarısı yol)
       ctx.beginPath();
       ctx.lineWidth = 70;
-      ctx.strokeStyle = '#f4e285'; 
+      ctx.strokeStyle = '#f4e285';
       for (let i = 0; i < totalNodes; i++)
         i === 0 ? ctx.moveTo(getX(i), getY(i)) : ctx.lineTo(getX(i), getY(i));
       ctx.stroke();
@@ -306,7 +309,7 @@ export default function JungleGamingPath() {
         if (v.y > scrollY - 200 && v.y < scrollY + canvas.height + 200) {
           if (v.type === 'tree') {
             ctx.save();
-            ctx.globalAlpha = 0.95; 
+            ctx.globalAlpha = 0.95;
             drawJungleTree(v.x, v.y, v.size, v.color, v.isPalm);
             ctx.restore();
           } else if (v.type === 'coin') {
@@ -396,7 +399,7 @@ export default function JungleGamingPath() {
           // 3D Həcm effekti
           ctx.beginPath();
           ctx.ellipse(x, y + border3D + floatOffset, rx, ry, 0, 0, Math.PI * 2);
-          if (nodeState === 'completed') ctx.fillStyle = '#38b000'; 
+          if (nodeState === 'completed') ctx.fillStyle = '#38b000';
           else if (nodeState === 'active') ctx.fillStyle = '#f77f00';
           else ctx.fillStyle = '#6c757d';
           ctx.fill();
@@ -404,8 +407,8 @@ export default function JungleGamingPath() {
           // Əsas Səth rəngi
           ctx.beginPath();
           ctx.ellipse(x, y + floatOffset, rx, ry, 0, 0, Math.PI * 2);
-          if (nodeState === 'completed') ctx.fillStyle = '#70e000'; 
-          else if (nodeState === 'active') ctx.fillStyle = '#fcbf49'; 
+          if (nodeState === 'completed') ctx.fillStyle = '#70e000';
+          else if (nodeState === 'active') ctx.fillStyle = '#fcbf49';
           else ctx.fillStyle = '#adb5bd';
           ctx.fill();
 
@@ -496,6 +499,7 @@ export default function JungleGamingPath() {
       for (let i = 0; i < vegetation.length; i++) {
         const item = vegetation[i];
         if (item.type === 'animal' && item.currentX && Math.sqrt((mX - item.currentX) ** 2 + (mY - item.currentY) ** 2) < 25) {
+          playSFX('btn3', 0.5);
           setActiveAnimal({
             name: item.animalType.name,
             x: item.currentX,
@@ -515,7 +519,7 @@ export default function JungleGamingPath() {
           const isLeftSide = nodeX < canvas.width / 2;
           const target = nodes[i];
           const assignedAnimal = animalsData[i % animalsData.length];
-
+          playSFX('btn3', 0.5);
           setActiveNode({
             id: target._id,
             _id: target._id,
@@ -559,12 +563,18 @@ export default function JungleGamingPath() {
 
   const startTask = (node: any) => {
     if (!node) return;
+    playSFX('btn2', 0.5);
     if (node.type === 'lesson') {
       navigateTo(`/student/lessons/${node._id}`);
     } else {
       navigateTo(`/student/arena/${node._id}`);
     }
   };
+
+  const goBack = () => {
+    playSFX('btn2', 0.5);
+    navigateTo('/student/dashboard');
+  }
 
   if (loading) {
     return (
@@ -585,7 +595,7 @@ export default function JungleGamingPath() {
 
         {/* Geri Dönmə Düyməsi */}
         <button
-          onClick={() => navigateTo('/student/dashboard')}
+          onClick={goBack}
           className="absolute top-5 left-5 bg-white px-8 py-3.5 hover:translate-y-[-2px] cursor-pointer rounded-full border-b-[5px] border-slate-200 z-10 whitespace-nowrap text-emerald-800 font-black text-sm md:text-base shadow-lg tracking-wide transition-all"
         >
           🌲 Xəritəyə qayıt
@@ -676,7 +686,10 @@ export default function JungleGamingPath() {
 
                 {activeNode.state !== 'locked' ? (
                   <button
-                    onClick={() => startTask(activeNode)}
+                    onClick={() => {
+                      startTask(activeNode)
+                      playSFX('btn1', 0.5)
+                    }}
                     className={`w-full text-white font-black text-xs text-center py-3 rounded-xl border-b-[4px] transition-all cursor-pointer uppercase tracking-widest active:border-b-0 active:translate-y-[4px]
                       ${activeNode.type === 'lesson'
                         ? 'bg-emerald-500 border-emerald-700 hover:bg-emerald-400'

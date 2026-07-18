@@ -4,6 +4,7 @@ import React, { useEffect } from 'react';
 import Image from 'next/image';
 import { useUser } from '@/src/context/UserContext';
 import { useTransition } from '@/src/context/TransitionContext';
+import { useSFX } from '@/src/hooks/useSFX';
 
 // Səviyyə məlumatları (x və y faiz ilə: 0-100%)
 const components = [
@@ -18,6 +19,8 @@ const components = [
 export default function LevelsPage() {
 
     const { userData } = useUser();
+
+    const { playSFX } = useSFX();
 
     const { endTransition, navigateTo } = useTransition();
 
@@ -55,7 +58,18 @@ export default function LevelsPage() {
                         <div
                             key={index}
                             className={`absolute transition-all ease-in-out ${!isLocked ? 'cursor-pointer group' : 'cursor-not-allowed'}`}
-                            onClick={() => !isLocked && navigateTo(component?.link)}
+                            onClick={() => {
+                                if (!isLocked) {
+                                    playSFX('btn1', 0.5);
+                                    navigateTo(component?.link);
+                                }
+                            }}
+                           // hover səsi üçün playSFX çağırırıq
+                            onMouseEnter={() => {
+                                if (!isLocked) {
+                                    playSFX('hvr', 0.5);
+                                }
+                            }}
                             style={{
                                 top: `${component.y}%`,
                                 left: `${component.x}%`,

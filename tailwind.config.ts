@@ -19,11 +19,16 @@ const config: Config = {
         slideUp: {
           '0%': { transform: 'translateY(100px)', opacity: '0' },
           '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+        bounceSlow: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-10px)' },
         }
       },
       animation: {
         scaleIn: 'scaleIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
         slideUp: 'slideUp 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+        'bounce-slow': 'bounceSlow 3s ease-in-out infinite',
       }
     },
   },
