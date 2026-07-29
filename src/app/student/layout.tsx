@@ -1,91 +1,25 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState } from 'react';
 import { useUser } from '@/src/context/UserContext';
-import { useTransition } from '@/src/context/TransitionContext';
 import { usePathname } from 'next/navigation';
 import {
-  LogOut, ChevronRight, Terminal, UserPen, X, Check,
+  LogOut, UserPen, X, Check,
   Loader2, Award, Sparkles, Map as MapIcon, ChevronLeft, Menu
 } from 'lucide-react';
-import ContestStickyCard from '@/src/components/ContestStickyCard';
 import GameFloatingButton from '@/src/components/GameFloatingButton';
 import BackgroundMusic from '@/src/components/BackgroundMusic';
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   const { userData, setUserData, logout } = useUser();
-  const { navigateTo } = useTransition();
-  const pathname = usePathname();
 
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isCardMinimized, setIsCardMinimized] = useState(false);
   const [tempData, setTempData] = useState({ fullName: '', avatar: 1 });
 
-  // --- SUBMISSIONS VƏ AKTİV SINAQLAR STATE-LƏRİ ---
-  const [submissions, setSubmissions] = useState<any[]>([]);
-  const [activeContests, setActiveContests] = useState<any[]>([]); 
-  const [isSubsLoading, setIsSubsLoading] = useState(false);
-
-  const showInfoCard = pathname === '/student/learning';
-
-  useEffect(() => {
-    if (!showInfoCard || !userData) return;
-
-    const fetchSubmissionsAndContests = async () => {
-      setIsSubsLoading(true);
-      try {
-        const res = await fetch('/api/student/submissions');
-        if (res.ok) {
-          const result = await res.json();
-          setSubmissions(result.submissions || []);
-          setActiveContests(result.activeContests || []);
-        }
-      } catch (err) {
-        console.error("Submissions loading error:", err);
-      } finally {
-        setIsSubsLoading(false);
-      }
-    };
-
-    fetchSubmissionsAndContests();
-  }, [showInfoCard, userData]);
 
   // ==================== 🎯 ÇOXLU SINAQ SÜZGƏCİ (YENİLƏNDİ) ====================
-  const displayingContests = useMemo(() => {
-    const now = new Date().getTime();
-    const uniqueContestsMap = new Map<string, any>();
-
-    // 1. Addım: Şagirdin hələ bitirmədiyi yarıda qalmış sınaqları əlavə edirik
-    if (submissions && Array.isArray(submissions)) {
-      submissions.forEach((sub: any) => {
-        if (!sub.contestId) return;
-        const end = new Date(sub.contestId.endTime).getTime();
-        // Vaxtı bitməyibsə və status tam tamamlanmayıbsa
-        if (end > now && sub.status !== 'completed') {
-          uniqueContestsMap.set(sub.contestId._id, sub.contestId);
-        }
-      });
-    }
-
-    // 2. Addım: API-dan gələn canlı/gözlənilən sınaqları əlavə edirik (təkrarlanmamaq şərti ilə)
-    if (activeContests && Array.isArray(activeContests)) {
-      activeContests.forEach((contest: any) => {
-        const end = new Date(contest.endTime).getTime();
-        if (now < end) {
-          uniqueContestsMap.set(contest._id, contest);
-        }
-      });
-    }
-
-    return Array.from(uniqueContestsMap.values());
-  }, [submissions, activeContests]);
-
-  // Sol HUD üçün task süzgəci
-  const activeTaskSubmissions = useMemo(() => {
-    if (!submissions || !Array.isArray(submissions)) return [];
-    return submissions.filter((sub: any) => sub.taskId);
-  }, [submissions]);
 
   const handleEditOpen = () => {
     setTempData({ fullName: userData?.fullName || '', avatar: userData?.avatar || 1 });
@@ -138,32 +72,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                 <h4 className="font-black text-slate-900 text-base tracking-tight leading-tight mb-1.5">{userData.fullName}</h4>
                 <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 text-[9px] font-black uppercase tracking-widest"><Award size={10} className="text-amber-500 animate-pulse" /> Pro Member</div>
               </div>
-
-              {/* AKTİV ARENALAR LİSTİ */}
-              <div className="flex-1 flex flex-col min-h-[150px] max-h-[240px]">
-                <div className="text-[9px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-2 flex items-center gap-1"><MapIcon size={10} /> Aktiv Arenalar</div>
-
-                <div className="flex-1 space-y-1.5 overflow-y-auto pr-1 custom-scrollbar">
-                  {isSubsLoading ? (
-                    <div className="flex justify-center items-center h-20 text-emerald-500"><Loader2 size={20} className="animate-spin" /></div>
-                  ) : activeTaskSubmissions.length === 0 ? (
-                    <div className="text-[10px] text-slate-400 font-bold text-center mt-6">Hələ aktiv arena yoxdur.</div>
-                  ) : (
-                    activeTaskSubmissions.map((sub: any) => {
-                      const isActive = pathname.includes(sub._id);
-                      return (
-                        <button key={sub._id} onClick={() => navigateTo(`/student/tasks/${sub._id}`)} className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-[11px] transition-all border text-left group ${isActive ? 'bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-700 border-emerald-300 shadow-inner translate-x-1' : 'text-slate-500 bg-white border-slate-100 hover:bg-slate-50 hover:text-slate-800'}`}>
-                          <span className="truncate w-40">{sub.taskId?.title || 'Tapşırıq'}</span>
-                          <div className="flex items-center">
-                            {sub.status === 'submitted' ? <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(52,211,153,0.5)]" /> : <ChevronRight size={12} className="opacity-0 group-hover:opacity-100 transition-all -translate-x-1 group-hover:translate-x-0" />}
-                          </div>
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-
+           
               <div className="pt-3 border-t border-slate-100 mt-4">
                 <button onClick={logout} className="flex items-center justify-center gap-2 text-slate-400 font-black text-[10px] uppercase tracking-widest hover:text-red-500 transition-colors w-full py-1.5 group"><LogOut size={14} className="group-hover:-translate-x-0.5 transition-transform" /> Meşəni Tərk Et</button>
               </div>
@@ -172,18 +81,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
         </div>
       )}
 
-      {/* 🚀 SAĞ KÜNCƏ YIĞILMIŞ ÇOXLU SINAQ KARTLARI (MAP STRUKTURU) */}
-      <div className="fixed top-6 right-6 z-50 pointer-events-auto flex flex-col gap-4 max-h-[85vh] overflow-y-auto pr-2 custom-scrollbar">
-        {displayingContests.map((contest) => (
-          <ContestStickyCard 
-            key={contest._id}
-            showInfoCard={showInfoCard}
-            activeContest={contest} // Təkil komponent öz fərdi datasını idarə edir
-            submissions={submissions}
-            navigateTo={navigateTo}
-          />
-        ))}
-      </div>
+      
 
       {/* KONTENT */}
       <main className="flex-1 min-h-screen relative z-10">

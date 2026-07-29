@@ -30,7 +30,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: "/admin/modules", icon: LayoutDashboard, label: "Modullar" },
     { href: "/admin/gametopics", icon: LayoutDashboard, label: "Oyun Topikler" },
     { href: "/admin/gamelevels", icon: Gamepad2, label: "Oyun Leveller" },
-    { href: "/admin/settings", icon: Settings, label: "Ayarlar" },
+    { href: "/admin/contests", icon: Settings, label: "Sınaqlar" },
   ];
 
   return (

@@ -40,6 +40,8 @@ interface IContest {
   durationMinutes: number;
   startTime: string; 
   endTime: string;
+  level?: number;      // Əlavə olundu (11 və ya 2)
+  reqOrder?: number;   // Əlavə olundu (istənilən number)
   questions: IQuestion[];
 }
 
@@ -59,7 +61,13 @@ export default function AdminContestGlobalJsonPage() {
 
   // Form States
   const [formValues, setFormValues] = useState<IContest>({
-    title: '', durationMinutes: 120, startTime: '', endTime: '', questions: []
+    title: '', 
+    durationMinutes: 120, 
+    startTime: '', 
+    endTime: '', 
+    level: 1,
+    reqOrder: 1,
+    questions: []
   });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
@@ -121,6 +129,8 @@ export default function AdminContestGlobalJsonPage() {
       durationMinutes: 120,
       startTime: '',
       endTime: '',
+      level: 1,
+      reqOrder: 1,
       questions: [
         {
           codeName: 'A',
@@ -153,6 +163,8 @@ export default function AdminContestGlobalJsonPage() {
     // Tarixləri datetime-local inputuna uyğun formata salırıq
     const formattedContest = {
       ...contest,
+      level: contest.level ?? 1,
+      reqOrder: contest.reqOrder ?? 1,
       startTime: contest.startTime ? new Date(contest.startTime).toISOString().slice(0, 16) : '',
       endTime: contest.endTime ? new Date(contest.endTime).toISOString().slice(0, 16) : '',
     };
@@ -265,6 +277,7 @@ export default function AdminContestGlobalJsonPage() {
           <thead>
             <tr className="bg-slate-50 border-b-2 border-slate-200 text-[10px] font-black uppercase text-slate-400 tracking-wider">
               <th className="p-4">Olimpiada / Sınaq Adı</th>
+              <th className="p-4 text-center">Level / Sıra</th>
               <th className="p-4 text-center">Zaman</th>
               <th className="p-4 text-center">Suallar</th>
               <th className="p-4 text-center w-24">Əməliyyat</th>
@@ -272,18 +285,22 @@ export default function AdminContestGlobalJsonPage() {
           </thead>
           <tbody className="divide-y divide-slate-100 text-sm font-semibold">
             {loading ? (
-              <tr><td colSpan={4} className="p-6 text-center text-slate-400 animate-pulse uppercase text-xs font-bold">Yüklənir...</td></tr>
+              <tr><td colSpan={5} className="p-6 text-center text-slate-400 animate-pulse uppercase text-xs font-bold">Yüklənir...</td></tr>
             ) : filteredContests.length > 0 ? (
               filteredContests.map((c) => (
                 <tr key={c._id} className="hover:bg-slate-50/50 transition-colors">
                   <td className="p-4 font-black text-slate-800">{c.title}</td>
+                  <td className="p-4 text-center font-mono text-xs">
+                    <span className="bg-slate-100 px-2 py-0.5 rounded text-slate-600 font-bold border border-slate-200 mr-1">Lvl: {c.level ?? 1}</span>
+                    <span className="bg-amber-50 px-2 py-0.5 rounded text-amber-700 font-bold border border-amber-200">Ord: {c.reqOrder ?? 1}</span>
+                  </td>
                   <td className="p-4 text-center font-mono text-xs text-slate-500">{c.durationMinutes} dəq</td>
                   <td className="p-4 text-center"><span className="bg-purple-50 text-purple-600 px-2.5 py-0.5 rounded-full text-xs font-black border border-purple-200">{c.questions?.length || 0} Sual</span></td>
                   <td className="p-4 text-center"><button onClick={() => openEditModal(c)} className="p-1.5 text-sky-500 bg-sky-50 hover:bg-sky-500 hover:text-white border border-sky-200 rounded-lg cursor-pointer"><Edit2 size={14} /></button></td>
                 </tr>
               ))
             ) : (
-              <tr><td colSpan={4} className="p-8 text-center text-slate-400 uppercase text-xs font-bold">Heç bir sınaq tapılmadı.</td></tr>
+              <tr><td colSpan={5} className="p-8 text-center text-slate-400 uppercase text-xs font-bold">Heç bir sınaq tapılmadı.</td></tr>
             )}
           </tbody>
         </table>
@@ -321,14 +338,14 @@ export default function AdminContestGlobalJsonPage() {
                 /* ==================== REJİM 1: GLOBAL CONTEST JSON EDİTORU ==================== */
                 <div className="space-y-2 bg-slate-900 p-4 rounded-2xl border-2 border-slate-950 flex flex-col min-h-[480px]">
                   <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono font-bold border-b border-slate-800 pb-2 mb-2">
-                    <span>📋 Mongoose Modelinə Uyğun Tam Struktur (title, durationMinutes, startTime, endTime, questions)</span>
+                    <span>📋 Mongoose Modelinə Uyğun Tam Struktur (title, durationMinutes, startTime, endTime, level, reqOrder, questions)</span>
                     <span className="text-amber-400 uppercase font-sans text-[10px]">Global JSON Mode Active</span>
                   </div>
                   <textarea
                     value={globalJsonString}
                     onChange={(e) => handleGlobalJsonChange(e.target.value)}
                     className="w-full bg-transparent text-emerald-400 font-mono text-xs outline-none resize-none leading-relaxed flex-1 min-h-[380px]"
-                    placeholder='{\n  "title": "Sınaq imtahanı",\n  "durationMinutes": 120,\n  "startTime": "2026-05-24T10:00",\n  "endTime": "2026-05-24T12:00",\n  "questions": []\n}'
+                    placeholder='{\n  "title": "Sınaq imtahanı",\n  "durationMinutes": 120,\n  "startTime": "2026-05-24T10:00",\n  "endTime": "2026-05-24T12:00",\n  "level": 11,\n  "reqOrder": 1,\n  "questions": []\n}'
                   />
                   {globalJsonError && (
                     <div className="bg-rose-950/50 border border-rose-800 text-rose-400 p-2.5 rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 mt-2">
@@ -357,7 +374,7 @@ export default function AdminContestGlobalJsonPage() {
                         placeholder="Məs: Azercell Cup Hazırlıq Sınağı"
                       />
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                       <div>
                         <label className="text-[11px] font-bold text-slate-600 block mb-1">Müddət (Dəqiqə)</label>
                         <input
@@ -371,6 +388,39 @@ export default function AdminContestGlobalJsonPage() {
                           className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold outline-none"
                         />
                       </div>
+                      
+                      {/* LEVEL SEÇİMİ (11 və ya 2) */}
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-600 block mb-1">Level (Səviyyə)</label>
+                        <select
+                          value={formValues.level ?? 1}
+                          onChange={(e) => {
+                            const updated = { ...formValues, level: parseInt(e.target.value) };
+                            setFormValues(updated);
+                            setGlobalJsonString(JSON.stringify(updated, null, 2));
+                          }}
+                          className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold outline-none cursor-pointer"
+                        >
+                          <option value={1}>Level 1</option>
+                          <option value={2}>Level 2</option>
+                        </select>
+                      </div>
+
+                      {/* REQORDER (İstənilən Number) */}
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-600 block mb-1">reqOrder (Sıra)</label>
+                        <input
+                          type="number"
+                          value={formValues.reqOrder ?? 1}
+                          onChange={(e) => {
+                            const updated = { ...formValues, reqOrder: parseInt(e.target.value) || 0 };
+                            setFormValues(updated);
+                            setGlobalJsonString(JSON.stringify(updated, null, 2));
+                          }}
+                          className="w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold outline-none"
+                        />
+                      </div>
+
                       <div>
                         <label className="text-[11px] font-bold text-slate-600 block mb-1">Başlama Tarixi</label>
                         <input

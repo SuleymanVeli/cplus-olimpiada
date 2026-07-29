@@ -5,6 +5,7 @@ import { useTransition } from '@/src/context/TransitionContext';
 import { useUser } from '@/src/context/UserContext';
 import { useSFX } from '@/src/hooks/useSFX';
 import { formatCountdown } from '@/src/utils/formatCountdown';
+import ContestList from '@/src/components/ContestList';
 
 interface TaskNode {
   _id: string;
@@ -786,6 +787,8 @@ export default function JungleGamingPath() {
             </p>
           </div>
         )}
+
+        {userData && <ContestList level={2} navigateTo={navigateTo}/>}
 
         <canvas ref={canvasRef} className="cursor-pointer block" />
       </div>

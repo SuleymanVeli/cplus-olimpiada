@@ -1,5 +1,4 @@
-import { number } from 'framer-motion';
-import mongoose, { Schema, model, Document } from 'mongoose';
+import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ISampleCase {
   input: string;
@@ -32,6 +31,8 @@ export interface IContest extends Document {
   startTime: Date;
   endTime: Date;
   questions: IQuestion[];
+  level: number;
+  reqOrder: number;
 }
 
 const ContestSchema = new Schema<IContest>({
@@ -39,6 +40,8 @@ const ContestSchema = new Schema<IContest>({
   durationMinutes: { type: Number, required: true },
   startTime: { type: Date, required: true },
   endTime: { type: Date, required: true },
+  level: { type: Number , required: true, },
+  reqOrder: { type: Number, required: true, default: 1 },
   questions: [{
     codeName: { type: String, required: true },
     title: { type: String, required: true },

@@ -4,19 +4,57 @@ import CodeQueue from '@/models/CodeQueue';
 import Contest from '@/models/Contest';
 import Submission from '@/models/Submission';
 
-async function executeCodeOnWandbox(code: string, stdin: string) {
-  const response = await fetch("https://wandbox.org/api/compile.json", {
+// Wandbox + OnlineCompiler fallback icra funksiyası
+async function executeCodeWithFallback(code: string, stdin: string) {
+  // 1. ADDIM: İlk olaraq Wandbox ilə cəhd edirik
+  try {
+    const wandboxResponse = await fetch("https://wandbox.org/api/compile.json", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        code: code,
+        stdin: stdin || "",
+        compiler: "gcc-head",
+        save: false
+      }),
+      signal: AbortSignal.timeout(6000) // 6 saniyəlik timeout
+    });
+
+    const result = await wandboxResponse.json();
+
+    // Əgər Wandbox-dan uğurlu cavab gəlibsə və "crun" xətası yoxdursa
+    if (result && !(result.compiler_error && result.compiler_error.includes("crun"))) {
+      const output = result.program_message || result.program_output || "";
+      return {
+        compiler_error: result.compiler_error || null,
+        program_output: output
+      };
+    }
+  } catch (e) {
+    console.log("Cron: Wandbox xətası, OnlineCompiler-ə keçilir...");
+  }
+
+  // 2. ADDIM: Wandbox uğursuz olarsa, OnlineCompiler işə düşür
+  const compilerResponse = await fetch("https://api.onlinecompiler.io/api/run-code-sync/", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "7c1450559b2dafd12fda09300f7100ae"
+    },
     body: JSON.stringify({
       code: code,
-      stdin: stdin,
-      compiler: "gcc-head",
-      save: false
+      compiler: "g++-15",
+      input: stdin || ""
     }),
-    signal: AbortSignal.timeout(6000) // Wandbox ilişib qalsa 6 saniyədə kəs
+    signal: AbortSignal.timeout(8000) // Fallback üçün 8 saniyəlik timeout
   });
-  return await response.json();
+
+  const compilerResult = await compilerResponse.json();
+
+  return {
+    compiler_error: compilerResult.error || null,
+    program_output: compilerResult.output || ""
+  };
 }
 
 export async function GET(req: NextRequest) {
@@ -29,7 +67,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 2. Növbədən maksimum 3 iş götürürük (Wandbox-ı boğmamaq və timeout olmamaq üçün)
+    // 2. Növbədən maksimum 3 iş götürürük
     const jobs = await CodeQueue.find({
       $or: [
         { status: 'queued' },
@@ -54,7 +92,7 @@ export async function GET(req: NextRequest) {
         const question = contest?.questions.find((q: any) => q.id === job.questionId);
 
         if (!question) {
-          await CodeQueue.findByIdAndDelete(job._id); // Məsələ silinibsə, növbədən də sil
+          await CodeQueue.findByIdAndDelete(job._id); // Məsələ silinibsə, növbədən sil
           return;
         }
 
@@ -64,14 +102,15 @@ export async function GET(req: NextRequest) {
 
         // Həmin məsələnin testlərini dövrlə yoxlayırıq
         for (const test of question.testCases) {
-          const result = await executeCodeOnWandbox(job.code, test.input);
+          // İkili fallback icra mexanizmi
+          const result = await executeCodeWithFallback(job.code, test.input);
 
           if (result.compiler_error) {
             compilerError = result.compiler_error;
             break; 
           }
 
-          const cleanUserOutput = result.program_message?.trim() || result.program_output?.trim();
+          const cleanUserOutput = result.program_output.trim();
           const cleanExpectedOutput = test.expectedOutput.trim();
 
           if (cleanUserOutput === cleanExpectedOutput) {
@@ -111,7 +150,7 @@ export async function GET(req: NextRequest) {
 
       } catch (err) {
         console.error(`Job xətası ${job._id}:`, err);
-        // 🔄 RETRY MEXANİZMİ: Əgər Wandbox şəbəkə xətası verdisə, statusu yenidən 'queued' edirik
+        // 🔄 RETRY MEXANİZMİ: Hər iki API uğursuz olarsa statusu yenidən 'queued' edirik
         await CodeQueue.findByIdAndUpdate(job._id, { status: 'queued', lockedAt: null });
       }
     });

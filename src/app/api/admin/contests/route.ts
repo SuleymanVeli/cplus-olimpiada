@@ -49,7 +49,9 @@ export async function POST(request: Request) {
       durationMinutes: Number(body.durationMinutes) || 120,
       startTime: new Date(body.startTime),
       endTime: new Date(body.endTime),
-      questions: processedQuestions
+      questions: processedQuestions,
+      level: body.level,
+      reqOrder: body.reqOrder
     });
 
     await newContest.save();
@@ -87,7 +89,9 @@ export async function PUT(request: Request) {
         durationMinutes: Number(body.durationMinutes) || 120,
         startTime: new Date(body.startTime),
         endTime: new Date(body.endTime),
-        questions: processedQuestions
+        questions: processedQuestions,
+        level: body.level,
+        reqOrder: body.reqOrder
       },
       { new: true, runValidators: true }
     );
