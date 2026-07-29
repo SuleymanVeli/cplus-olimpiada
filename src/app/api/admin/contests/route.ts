@@ -93,7 +93,7 @@ export async function PUT(request: Request) {
         level: body.level,
         reqOrder: body.reqOrder
       },
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
 
     if (!updatedContest) {
