@@ -20,10 +20,12 @@ export async function POST(req: Request) {
     }
 
     // Google email-i ilə mövcud istifadəçini tap və yenilə
-    const user = await User.findOne({ email: session.user.email });
+    let user = await User.findOne({ email: session.user.email });
 
     if (!user) {
-      return NextResponse.json({ error: "İstifadəçi tapılmadı!" }, { status: 404 });
+      user = new User({
+        email: session.user.email,       
+      });      
     }
 
     if (user.isBlocked) {
@@ -34,6 +36,10 @@ export async function POST(req: Request) {
     user.avatar = avatar || "1";
     user.isRegistered = true;
     user.registeredAt = new Date();
+    user.level = 1; // Yeni istifadəçi üçün başlanğıc səviyyə
+    user.weeklyModuleLimit = 1; // Yeni istifadəçi üçün həftəlik modul limiti
+    user.weeklyLessonDays = 100; // Yeni istifadəçi üçün həftəlik dərs günləri
+
 
     await user.save();
 

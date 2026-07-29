@@ -36,38 +36,38 @@ export default function Home() {
   }, []);
 
   // İstifadəçinin vəziyyətinə görə modal daxili ekranı təyin etmək
- // ? İstifadəçinin vəziyyətinə görə modal daxili ekranı təyin etmək
-useEffect(() => {
-  if (userData && !isLogout) {
-    if (userData.isBlocked) {
-      setIsLoginOpen(true); 
+  // ? İstifadəçinin vəziyyətinə görə modal daxili ekranı təyin etmək
+  useEffect(() => {
+    if (userData && !isLogout) {
+      if (userData.isBlocked) {
+        setIsLoginOpen(true);
+        setRegStep(1);
+      } else if (!userData.isRegistered) {
+        setIsLoginOpen(true);
+        setRegStep(2);
+      } else {
+        setIsLoginOpen(false);
+        navigateTo('/student/dashboard');
+      }
+    }
+
+    if (isLogout) {
+      setIsLoginOpen(true);
       setRegStep(1);
-    } else if (!userData.isRegistered) {
-      setIsLoginOpen(true); 
-      setRegStep(2);
-    } else {
-      setIsLoginOpen(false);
-      navigateTo('/student/dashboard');
-    }
-  }
+      logout();
+      setUserData(null);
 
-  if (isLogout) {
-    setIsLoginOpen(true); 
-    setRegStep(1); 
-    logout(); 
-    setUserData(null); 
-    
-    // 🔥 DÖNGÜYÜ KIRAN KRİTİK DÜZELTME: URL'deki ?logout=true parametresini temizliyoruz
-    if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href);
-      url.searchParams.delete('logout');
-      // Sayfayı yenilemeden URL'i temizler
-      window.history.replaceState({}, '', url.pathname);
-      setIsLogout(false); // State'i de sıfırlıyoruz
+      // 🔥 DÖNGÜYÜ KIRAN KRİTİK DÜZELTME: URL'deki ?logout=true parametresini temizliyoruz
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('logout');
+        // Sayfayı yenilemeden URL'i temizler
+        window.history.replaceState({}, '', url.pathname);
+        setIsLogout(false); // State'i de sıfırlıyoruz
+      }
     }
-  }
 
-}, [userData, navigateTo, isLogout, logout, setUserData]);
+  }, [userData, navigateTo, isLogout, logout, setUserData]);
 
   // 1. Google Girişini yeni kiçik pəncərədə açmaq üçün funksiya
   const handleGoogleSignIn = () => {
@@ -105,7 +105,7 @@ useEffect(() => {
 
   const handleCloseModal = async () => {
     setIsLoginOpen(false);
-    
+
     // Əgər istifadəçi loqin olubsa amma hələ qeydiyyatı bitirməyibsə, sessiyasını təmizləyirik
     if (userData && !userData.isRegistered) {
       setRegStep(1);
@@ -122,12 +122,19 @@ useEffect(() => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
+
       if (res.ok) {
         const result = await res.json();
         setUserData(result.data); // Context-i təzələ, avtomatik useEffect işə düşüb arenaya aparacaq
       }
+      if (res.status !== 200) {
+        setRegStep(1);
+        await logout();
+      }
     } catch (err) {
       console.error(err);
+
+      console.log("bura")
     } finally {
       setIsSubmitting(false);
     }
@@ -139,13 +146,11 @@ useEffect(() => {
       {/* PREMIUM TRANSPARANT HEADER */}
       <header
         className={`w-full py-4 px-6 md:px-12 flex justify-between items-center fixed top-0 z-50 transition-all duration-300 ${isScrolled
-            ? 'bg-white/60 backdrop-blur-md border-b border-slate-200/30 shadow-sm'
-            : 'bg-transparent border-b border-transparent'
+          ? 'bg-white/60 backdrop-blur-md border-b border-slate-200/30 shadow-sm'
+          : 'bg-transparent border-b border-transparent'
           }`}
       >
-        
 
-     
       </header>
 
       <main>
@@ -236,8 +241,8 @@ useEffect(() => {
                           type="button"
                           onClick={() => setFormData({ ...formData, avatar: num })}
                           className={`aspect-square rounded-xl overflow-hidden border-2 transition-all p-0.5 ${formData.avatar === num
-                              ? 'border-emerald-500 scale-105 bg-white shadow-md'
-                              : 'border-transparent opacity-50 hover:opacity-100'
+                            ? 'border-emerald-500 scale-105 bg-white shadow-md'
+                            : 'border-transparent opacity-50 hover:opacity-100'
                             }`}
                         >
                           <img src={`/avatars/avatar-${num}.png`} alt={`avatar-${num}`} className="w-full h-full object-cover rounded-lg" />

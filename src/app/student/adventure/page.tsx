@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useTransition } from '@/src/context/TransitionContext';
 import { useUser } from '@/src/context/UserContext';
 import { useSFX } from '@/src/hooks/useSFX';
+import { formatCountdown } from '@/src/utils/formatCountdown';
 
 interface TaskNode {
   _id: string;
@@ -11,7 +12,7 @@ interface TaskNode {
   title: string;
   order: number;
   points: number;
-  status: 'completed' | 'active' | 'locked';
+  status: 'completed' | 'active' | 'locked' | 'weekly_locked';
   moduleTitle: string;
 }
 
@@ -54,6 +55,7 @@ export default function JungleGamingPath() {
     type: 'lesson' | 'task';
     index: number;
     displayNumber: number | string;
+    remainingMs: number;
     title: string;
     moduleTitle: string;
     desc: string;
@@ -61,7 +63,7 @@ export default function JungleGamingPath() {
     x: number;
     y: number;
     isLeftSide: boolean;
-    state: 'completed' | 'active' | 'locked';
+    state: 'completed' | 'active' | 'locked' | 'weekly_locked';
   } | null>(null);
 
   useEffect(() => {
@@ -72,7 +74,7 @@ export default function JungleGamingPath() {
 
         if (result.success && result.data && Array.isArray(result.data)) {
           const flatNodes: TaskNode[] = result.data;
-          let activeIdx = flatNodes.findIndex((n) => n.status === 'active');
+          let activeIdx = flatNodes.findIndex((n) => n.status === 'active' || n.status === 'weekly_locked');
           if (activeIdx === -1) {
             const lastCompleted = flatNodes.reduce((acc, n, idx) => n.status === 'completed' ? idx : acc, -1);
             activeIdx = lastCompleted !== -1 ? lastCompleted : 0;
@@ -537,7 +539,8 @@ export default function JungleGamingPath() {
             y: nodeY,
             isLeftSide,
             state: target.status,
-            animal: assignedAnimal
+            animal: assignedAnimal,
+            remainingMs: target.status === 'weekly_locked' ? (target as any).remainingMs : 0
           });
           return;
         }
@@ -609,41 +612,51 @@ export default function JungleGamingPath() {
         {/* Oyunlaşdırılmış İnfo Kart Modalı */}
         {activeNode && (
           <div
-            className={`absolute p-0 rounded-[28px] shadow-[0_20px_50px_rgba(0,0,0,0.35)] w-[380px] z-[100] transition-all duration-300 transform scale-100 hover:scale-[1.01] border-b-[8px] pointer-events-auto overflow-hidden flex flex-col
-              ${activeNode.state === 'locked'
-                ? 'bg-slate-100 border-slate-400 text-slate-500'
-                : activeNode.type === 'lesson'
-                  ? 'bg-gradient-to-br from-white to-emerald-50 border-emerald-400'
-                  : 'bg-gradient-to-br from-white to-orange-50 border-orange-400'
+            className={`absolute p-0 rounded-[28px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] w-[380px] z-[100] transition-all duration-300 transform scale-100 hover:scale-[1.02] border-b-[8px] pointer-events-auto overflow-hidden flex flex-col
+           ${activeNode.state === 'weekly_locked'
+                ? 'bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-500'
+                : activeNode.state === 'locked'
+                  ? 'bg-slate-100 border-slate-400 text-slate-500'
+                  : activeNode.type === 'lesson'
+                    ? 'bg-gradient-to-br from-sky-50 to-white border-sky-400'
+                    : 'bg-gradient-to-br from-amber-50 to-white border-amber-400'
               }
-              ${activeNode.isLeftSide ? 'arrow-left' : 'arrow-right'}`}
+           ${activeNode.isLeftSide ? 'arrow-left' : 'arrow-right'}`}
             style={{
               left: activeNode.isLeftSide ? `${activeNode.x + 75}px` : `${activeNode.x - 380 - 75}px`,
               top: `${activeNode.y - 90}px`,
             }}
             onMouseDown={(e) => e.stopPropagation()}
           >
+            {/* 1. Header Zolağı (Sadə və Tək başlıq) */}
             <div className={`px-5 py-2.5 text-[11px] font-black tracking-widest uppercase flex justify-between items-center text-white
-              ${activeNode.state === 'locked'
-                ? 'bg-slate-400'
-                : activeNode.type === 'lesson'
-                  ? 'bg-gradient-to-r from-emerald-500 to-green-600'
-                  : 'bg-gradient-to-r from-orange-400 to-amber-500'
+           ${activeNode.state === 'weekly_locked'
+                ? 'bg-gradient-to-r from-indigo-500 to-purple-600'
+                : activeNode.state === 'locked'
+                  ? 'bg-slate-400'
+                  : activeNode.type === 'lesson'
+                    ? 'bg-gradient-to-r from-sky-400 to-blue-500'
+                    : 'bg-gradient-to-r from-amber-400 to-orange-500'
               }`}
             >
               <span className="truncate max-w-[240px]">{activeNode.moduleTitle}</span>
-              <span className="bg-white/20 px-2.5 py-0.5 rounded-full text-[10px]">
-                {activeNode.state === 'locked' ? 'KİLİDLİ 🔒' : activeNode.type === 'lesson' ? 'VİDEO DƏRS 📺' : 'ARENA ⚔️'}
+              <span className="bg-white/20 px-2.5 py-0.5 rounded-full text-[10px] backdrop-blur-sm">
+                {activeNode.type === 'lesson' ? 'VİDEO DƏRS 📺' : 'ARENA ⚔️'}
               </span>
             </div>
 
+            {/* 2. Kartın Gövdəsi */}
             <div className="p-5 flex gap-4 items-start relative flex-1">
+
+              {/* SOL TƏRƏF: Personaj */}
               {activeNode.animal && (
                 <div className="flex flex-col items-center flex-shrink-0 group">
                   <div className={`w-20 h-20 rounded-full overflow-hidden border-4 bg-white shadow-md transform transition-transform duration-300 group-hover:rotate-3 relative
-                    ${activeNode.state === 'locked'
-                      ? 'border-slate-300 grayscale opacity-70'
-                      : activeNode.type === 'lesson' ? 'border-emerald-300' : 'border-amber-300'
+                 ${activeNode.state === 'weekly_locked'
+                      ? 'border-indigo-400 opacity-90'
+                      : activeNode.state === 'locked'
+                        ? 'border-slate-300 grayscale opacity-70'
+                        : activeNode.type === 'lesson' ? 'border-sky-300' : 'border-amber-300'
                     }`}
                   >
                     <img
@@ -651,14 +664,20 @@ export default function JungleGamingPath() {
                       alt={activeNode.animal.name}
                       className="w-full h-full object-cover"
                     />
+                    {activeNode.state === 'weekly_locked' && (
+                      <div className="absolute inset-0 bg-indigo-900/30 flex items-center justify-center text-xl">⏳</div>
+                    )}
                     {activeNode.state === 'locked' && (
                       <div className="absolute inset-0 bg-slate-900/20 flex items-center justify-center text-xl">🔒</div>
                     )}
                   </div>
+
                   <span className={`text-[11px] font-black mt-2 px-2.5 py-0.5 rounded-md shadow-sm border
-                    ${activeNode.state === 'locked'
-                      ? 'bg-slate-200 border-slate-300 text-slate-500'
-                      : 'bg-white border-slate-200 text-slate-700'
+                 ${activeNode.state === 'weekly_locked'
+                      ? 'bg-indigo-100 border-indigo-200 text-indigo-800'
+                      : activeNode.state === 'locked'
+                        ? 'bg-slate-200 border-slate-300 text-slate-500'
+                        : 'bg-white border-slate-200 text-slate-700'
                     }`}
                   >
                     {activeNode.animal.name}
@@ -666,58 +685,85 @@ export default function JungleGamingPath() {
                 </div>
               )}
 
-              <div className="flex-1 min-w-0 relative bg-white/60 p-3.5 rounded-2xl border border-slate-100 shadow-inner">
-                <h3 className={`m-0 mb-1 text-base font-black leading-tight truncate
-                  ${activeNode.state === 'locked'
-                    ? 'text-slate-400'
-                    : activeNode.type === 'lesson' ? 'text-emerald-600' : 'text-orange-600'
-                  }`}
-                >
-                  {activeNode.type === 'lesson' ? '📖 ' : `${activeNode.displayNumber}. `}
-                  {activeNode.title}
-                </h3>
+              {/* SAĞ TƏRƏF: Mətn və Düymələr */}
+              <div className="flex-1 min-w-0 relative bg-white/70 p-3.5 rounded-2xl border border-slate-100 shadow-inner flex flex-col justify-between">
+                <div className="absolute top-6 -left-2 w-4 h-4 bg-white/70 border-l border-b border-slate-100 rotate-45 hidden md:block"></div>
 
-                <p className="m-0 text-slate-600 text-xs font-bold leading-relaxed mb-4 line-clamp-3">
-                  {activeNode.state === 'locked'
-                    ? "Dayan! 🛑 Bu sıx cəngəllik hələ təmizlənməyib. Keçid üçün əvvəlki orta səviyyə kodları tamamlamalısan!"
-                    : activeNode.desc
-                  }
-                </p>
+                <div>
+                  {/* Tapşırıq/Dərs Başlığı */}
+                  <h3 className={`m-0 mb-1.5 text-base font-black leading-tight truncate
+                 ${activeNode.state === 'weekly_locked'
+                      ? 'hidden'
+                      : activeNode.state === 'locked'
+                        ? 'text-slate-400'
+                        : activeNode.type === 'lesson' ? 'text-sky-600' : 'text-amber-600'
+                    }`}
+                  >
+                    {activeNode.type === 'lesson' ? '📖 ' : `${activeNode.displayNumber}. `}
+                    {activeNode.title}
+                  </h3>
 
-                {activeNode.state !== 'locked' ? (
+                  {/* DİNOMİK MƏTN (Normal Açıqlama və ya Fərqli Rəngdə Xüsusi Xəbərdarlıq) */}
+                  {activeNode.state === 'weekly_locked' ? (
+                    <div className="space-y-2">
+                      <p className="m-0 text-purple-700 text-md font-black bg-purple-100/80 px-2.5 py-1.5 rounded-lg border border-purple-200/60 inline-block">
+                        {formatCountdown(activeNode.remainingMs)}
+                      </p>
+                    </div>
+                  ) : activeNode.state === 'locked' ? (
+                    <p className="m-0 text-slate-500 text-xs font-bold leading-relaxed">
+                      "Dayan! 🛑 Bu sıx cəngəllik hələ təmizlənməyib. Keçid üçün əvvəlki orta səviyyə kodları tamamlamalısan!"
+                    </p>
+                  ) : (
+                    <p className="m-0 text-slate-600 text-xs font-bold leading-relaxed">
+                      {activeNode.desc}
+                    </p>
+                  )}
+                </div>
+
+                {/* DÜYMƏ BÖLMƏSİ (Yalnız Aktiv və Sıradan Kilidli olanlar üçün) */}
+                {activeNode.state === 'active'? (
                   <button
-                    onClick={() => {
-                      startTask(activeNode)
-                      playSFX('btn1', 0.5)
-                    }}
-                    className={`w-full text-white font-black text-xs text-center py-3 rounded-xl border-b-[4px] transition-all cursor-pointer uppercase tracking-widest active:border-b-0 active:translate-y-[4px]
-                      ${activeNode.type === 'lesson'
-                        ? 'bg-emerald-500 border-emerald-700 hover:bg-emerald-400'
-                        : 'bg-orange-500 border-orange-700 hover:bg-orange-400'
+                    onClick={() => startTask(activeNode)}
+                    className={`w-full text-white font-black text-xs text-center py-3 mt-3 rounded-xl border-b-[4px] transition-all cursor-pointer uppercase tracking-widest active:border-b-0 active:translate-y-[4px]
+                   ${activeNode.type === 'lesson'
+                        ? 'bg-sky-500 border-sky-700 hover:bg-sky-400'
+                        : 'bg-amber-500 border-amber-700 hover:bg-amber-400'
                       }`}
                   >
-                    {activeNode.type === 'lesson' ? 'DƏRSƏ BAX 📺' : 'CƏNGƏLLİYƏ ATIL 🚀'}
+                    {activeNode.type === 'lesson' ? 'DƏRSƏ BAX 📺' : 'KODLAMAĞA BAŞLA 🚀'}
                   </button>
-                ) : (
-                  <div className="w-full bg-slate-200 text-slate-400 border-b-[4px] border-slate-300 font-black text-center py-2.5 rounded-xl text-xs uppercase tracking-wider cursor-not-allowed">
-                    SAYYAH KİLİDLİDİR 🔒
+                ) : activeNode.state === 'locked' ? (
+                  <div className="w-full bg-slate-200 text-slate-400 border-b-[4px] border-slate-300 font-black text-center py-2.5 mt-3 rounded-xl text-xs uppercase tracking-wider cursor-not-allowed">
+                    GİRİŞ QADAĞANDIR 🔒
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
 
+            {/* Dinamik Ox CSS İzləyicisi */}
             <style jsx>{`
-              .arrow-left::after {
-                content: ''; position: absolute; top: 65px; left: -24px;
-                border-width: 12px; border-style: solid;
-                border-color: transparent ${activeNode.state === 'locked' ? '#94a3b8' : activeNode.type === 'lesson' ? '#10b981' : '#f97316'} transparent transparent;
-              }
-              .arrow-right::after {
-                content: ''; position: absolute; top: 65px; right: -24px;
-                border-width: 12px; border-style: solid;
-                border-color: transparent transparent transparent ${activeNode.state === 'locked' ? '#94a3b8' : activeNode.type === 'lesson' ? '#10b981' : '#f97316'};
-              }
-            `}</style>
+           .arrow-left::after {
+             content: ''; position: absolute; top: 65px; left: -24px;
+             border-width: 12px; border-style: solid;
+             border-color: transparent ${activeNode.state === 'weekly_locked'
+                ? '#6366f1'
+                : activeNode.state === 'locked'
+                  ? '#94a3b8'
+                  : activeNode.type === 'lesson' ? '#38bdf8' : '#fbbf24'
+              } transparent transparent;
+           }
+           .arrow-right::after {
+             content: ''; position: absolute; top: 65px; right: -24px;
+             border-width: 12px; border-style: solid;
+             border-color: transparent transparent transparent ${activeNode.state === 'weekly_locked'
+                ? '#6366f1'
+                : activeNode.state === 'locked'
+                  ? '#94a3b8'
+                  : activeNode.type === 'lesson' ? '#38bdf8' : '#fbbf24'
+              };
+           }
+         `}</style>
           </div>
         )}
 

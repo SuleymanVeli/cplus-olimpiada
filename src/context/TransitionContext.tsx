@@ -121,7 +121,7 @@ export function TransitionProvider({ children }: { children: React.ReactNode }) 
        {/* =======================================================
           3D PREMIUM ÇOXQATLI BULUD KEÇİDİ (PREMIUM CLOUD OVERLAY)
          ======================================================= */}
-      <div className={`fixed inset-0 pointer-events-none z-[9999] flex transition-all duration-700 ${isTransitioning ? 'opacity-100 bg-indigo-900/5' : 'opacity-0 bg-transparent'}`}>
+      <div className={`fixed inset-0 pointer-events-none z-[99999] flex transition-all duration-700 ${isTransitioning ? 'opacity-100 bg-indigo-900/5' : 'opacity-0 bg-transparent'}`}>
         
         {/* ================= SOL BULUD SİSTEMİ ================= */}
         <div className={`w-1/2 h-full bg-white relative transition-transform duration-[650ms] cubic-bezier(0.19, 1, 0.22, 1) ${isTransitioning ? 'translate-x-0' : '-translate-x-full'}`}>

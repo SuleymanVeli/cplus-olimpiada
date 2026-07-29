@@ -33,11 +33,11 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
 
     await signOut({ redirect: false });
 
-
     setTimeout(() => {
       setUserData(null);
     }, 2000);
   };
+  
 
   return (
     <UserContext.Provider value={{ userData, setUserData, logout, isLoading }}>

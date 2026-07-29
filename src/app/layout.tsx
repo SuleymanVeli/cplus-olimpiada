@@ -1,4 +1,3 @@
-import BackgroundMusic from "../components/BackgroundMusic";
 import { Providers } from "../components/Providers";
 import { TransitionProvider } from "../context/TransitionContext";
 import { UserProvider } from "../context/UserContext";
@@ -18,7 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           <TransitionProvider>
             <UserProvider>
-              <BackgroundMusic/>
+         
               {children}
             </UserProvider>
           </TransitionProvider>

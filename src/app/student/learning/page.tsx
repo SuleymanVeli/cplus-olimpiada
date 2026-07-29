@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useTransition } from '@/src/context/TransitionContext';
 import { useUser } from '@/src/context/UserContext'; // 🚀 Sizin real User Context-iniz
 import { useSFX } from '@/src/hooks/useSFX';
+import { formatCountdown } from '@/src/utils/formatCountdown';
 
 interface TaskNode {
   _id: string;
@@ -11,7 +12,7 @@ interface TaskNode {
   title: string;
   order: number;
   points: number;
-  status: 'completed' | 'active' | 'locked';
+  status: 'completed' | 'active' | 'locked' | 'weekly_locked';
   moduleTitle: string;
   new: boolean;
 }
@@ -31,7 +32,6 @@ const animalsData = [
   { id: 12, nameAz: "Tənbəllər", nameEn: "Sloth", image: "12.jpg" },
   { id: 13, nameAz: "Surikat", nameEn: "Meerkat", image: "13.jpg" }
 ];
-
 
 export default function GamingPath() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -61,6 +61,7 @@ export default function GamingPath() {
     type: 'lesson' | 'task';
     index: number;
     displayNumber: number | string;
+    remainingMs: number;
     title: string;
     moduleTitle: string;
     desc: string;
@@ -68,7 +69,7 @@ export default function GamingPath() {
     x: number;
     y: number;
     isLeftSide: boolean;
-    state: 'completed' | 'active' | 'locked';
+    state: 'completed' | 'active' | 'locked' | 'weekly_locked';
   } | null>(null);
 
   // --- 1. API-dən MƏLUMATLARIN ÇƏKİLMƏSİ ---
@@ -81,7 +82,7 @@ export default function GamingPath() {
         if (result.success && result.data && Array.isArray(result.data)) {
           const flatNodes: TaskNode[] = result.data;
 
-          let activeIdx = flatNodes.findIndex((n) => n.status === 'active');
+          let activeIdx = flatNodes.findIndex((n) => n.status === 'active' || n.status === 'weekly_locked');
 
           if (activeIdx === -1) {
             const lastCompleted = flatNodes.reduce((acc, n, idx) => n.status === 'completed' ? idx : acc, -1);
@@ -159,7 +160,12 @@ export default function GamingPath() {
     const getX = (i: number) => canvas.width / 2 + Math.sin(i * 0.4) * 100;
     const getY = (i: number) => mapHeight - 150 - i * spacing;
 
+    // ==========================================
+    // 🌲 AĞAC VƏ 🦊 HEYVANLARIN DÜZÜLÜŞ MƏNTİQİ
+    // ==========================================
     const trees: any[] = [];
+    const animals: any[] = [];
+
     const cppFacts = [
       "💡 C++ dilində 'bool' tipi yaddaşda cəmi 1 bayt yer tutur!",
       "⚡ 'std::ios_base::sync_with_stdio(false)' kodu C++ daxiletməsini uçuşa keçirir!",
@@ -171,7 +177,6 @@ export default function GamingPath() {
       "💥 'int' dəyişəninə daşıya biləcəyindən böyük ədəd versən overflow (daşma) olar!"
     ];
 
-    const animals: any[] = [];
     const animalTypes = [
       { name: '🐰 Dovşan', color: '#ffafcc', behavior: 'jump' },
       { name: '🦊 Tülkü', color: '#f95738', behavior: 'run' },
@@ -179,15 +184,26 @@ export default function GamingPath() {
       { name: '🦌 Maral', color: '#e09f3e', behavior: 'jump' }
     ];
 
-    for (let i = 0; i < 12; i++) {
-      let y = Math.random() * (mapHeight - 400) + 200;
-      let x = Math.random() * canvas.width;
+    // 1. Heyvanların Bərabər və Çığırdan Kənarda Yerləşməsi (12 ədəd)
+    const totalAnimals = 12;
+    const animalSegmentHeight = (mapHeight - 400) / totalAnimals;
 
-      const nodeIndexEstimation = (mapHeight - 150 - y) / spacing;
-      let pathX = getX(nodeIndexEstimation);
-      if (Math.abs(x - pathX) < 120) {
-        x = x < pathX ? x - 130 : x + 130;
-      }
+    for (let i = 0; i < totalAnimals; i++) {
+      // Y oxunu xəritə boyunca bərabər hissələrə bölürük
+      let y = 200 + i * animalSegmentHeight + Math.random() * (animalSegmentHeight * 0.7);
+
+      // Y oxundakı nod indeksini təxmin edib çığırın X nöqtəsini tapırıq
+      const estimatedNodeIndex = (mapHeight - 150 - y) / spacing;
+      const pathX = getX(estimatedNodeIndex);
+
+      // Heyvanı çığırın soluna və ya sağına təyin edirik
+      const isLeft = Math.random() > 0.5;
+      const minSafeOffset = 130; // Çığırdan minimum təhlükəsiz məsafə
+      const extraOffset = Math.random() * 120; // Əlavə təsadüfi məsafə
+
+      let x = isLeft
+        ? Math.max(40, pathX - minSafeOffset - extraOffset)
+        : Math.min(canvas.width - 40, pathX + minSafeOffset + extraOffset);
 
       animals.push({
         x,
@@ -199,16 +215,26 @@ export default function GamingPath() {
       });
     }
 
-    for (let i = 0; i < 550; i++) {
-      let y = Math.random() * mapHeight;
-      let x = Math.random() * canvas.width;
+    // 2. Ağacların Bərabər və Çığırdan Kənarda Səpələnməsi (550 ədəd)
+    const totalTrees = 550;
+    const treeSegmentHeight = mapHeight / totalTrees;
 
-      const nodeIndexEstimation = (mapHeight - 150 - y) / spacing;
-      let pathX = getX(nodeIndexEstimation);
+    for (let i = 0; i < totalTrees; i++) {
+      let y = i * treeSegmentHeight + Math.random() * treeSegmentHeight;
 
-      if (Math.abs(x - pathX) < 110) {
-        x = x < pathX ? x - 120 : x + 120;
-      }
+      const estimatedNodeIndex = (mapHeight - 150 - y) / spacing;
+      const pathX = getX(estimatedNodeIndex);
+
+      // Çığın sağında və ya solunda yerləşdiririk
+      const isLeft = Math.random() > 0.5;
+      const minSafeOffset = 110; // Ağacın mərkəzinin çığırdan aralıq məsafəsi
+      const maxOffset = (canvas.width / 2) - 30;
+      const offset = minSafeOffset + Math.random() * Math.max(20, maxOffset - minSafeOffset);
+
+      let x = isLeft ? pathX - offset : pathX + offset;
+
+      // Ekran sərhədlərindən kənara çıxmaması üçün
+      x = Math.max(30, Math.min(canvas.width - 30, x));
 
       trees.push({
         x,
@@ -320,7 +346,7 @@ export default function GamingPath() {
         }
       });
 
-      // Nodes (Səviyyə Düymələri)
+      // Nodes (Səviyyə Düymələri - Animasiyasız, Bütünlükdə Hazır Çəkilir)
       for (let i = 0; i < totalNodes; i++) {
         let x = getX(i), y = getY(i);
 
@@ -335,12 +361,12 @@ export default function GamingPath() {
           let floatOffset = nodeState === 'active' ? Math.sin(animationFrame * 2.2) * 8 : 0;
           let border3D = 6;
 
-          // ... (Kölgə çəkilməsi eyni qalır, o yerdə sabit qalmalıdır ki təbii görünsün) ...
+          // Kölgə
           ctx.beginPath();
           ctx.ellipse(x, y + 10, rx * (nodeState === 'active' ? 1 - floatOffset * 0.02 : 1), ry * (nodeState === 'active' ? 1 - floatOffset * 0.02 : 1), 0, 0, Math.PI * 2);
           ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fill();
 
-          // 🚀 Düymənin öz gövdəsi artıq floatOffset (yəni avatarFloat ilə eyni tempdə) hərəkət edir!
+          // 3D Alt Qat
           ctx.beginPath();
           ctx.ellipse(x, y + border3D + floatOffset, rx, ry, 0, 0, Math.PI * 2);
           if (nodeState === 'completed') ctx.fillStyle = '#1899d6';
@@ -348,6 +374,7 @@ export default function GamingPath() {
           else ctx.fillStyle = '#a0a0a0';
           ctx.fill();
 
+          // Əsas Gövdə
           ctx.beginPath();
           ctx.ellipse(x, y + floatOffset, rx, ry, 0, 0, Math.PI * 2);
           if (nodeState === 'completed') ctx.fillStyle = '#1cb0f6';
@@ -356,45 +383,27 @@ export default function GamingPath() {
           ctx.fill();
 
           if (nodes[i].new === true) {
-
             const blink = Math.abs(Math.sin(animationFrame * 1));
-
             ctx.save();
-
             ctx.globalAlpha = 0.5 + blink * 0.5;
 
-            // balaca bubble
             ctx.beginPath();
-            ctx.roundRect(
-              x - 25,
-              y + floatOffset - 65,
-              50,
-              22,
-              10
-            );
-
+            ctx.roundRect(x - 25, y + floatOffset - 65, 50, 22, 10);
             ctx.fillStyle = '#ff6b6b';
             ctx.fill();
-
 
             ctx.fillStyle = '#fff';
             ctx.font = 'bold 12px Arial';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-
-            ctx.fillText(
-              '✨ Yeni',
-              x,
-              y + floatOffset - 54
-            );
-
+            ctx.fillText('✨ Yeni', x, y + floatOffset - 54);
             ctx.restore();
           }
 
-          if (nodeState === 'active') {
+          if (nodeState === 'active' ) {
             ctx.beginPath(); ctx.ellipse(x, y + floatOffset, rx * 0.8, ry * 0.8, 0, 0, Math.PI * 2); ctx.fillStyle = '#ffffff'; ctx.fill();
             ctx.beginPath(); ctx.ellipse(x, y + floatOffset, rx * 0.68, ry * 0.68, 0, 0, Math.PI * 2); ctx.fillStyle = '#ffe066'; ctx.fill();
-          } else if (nodeState === 'completed') {
+          } else {
             ctx.beginPath(); ctx.ellipse(x, y + floatOffset + 2, rx * 0.8, ry * 0.7, 0, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fill();
           }
 
@@ -418,23 +427,20 @@ export default function GamingPath() {
         }
       }
 
-      // 🚀 USER DİNAMİK AVATARI (Aktiv Node-un Təpəsində)
+      // 🚀 USER DİNAMİK AVATARI
       if (nodes[currentActiveIndex]) {
         const activeX = getX(currentActiveIndex);
         const activeY = getY(currentActiveIndex);
 
-        // 🚀 Düymə ilə TAM EYNİ temp və piksel dəyəri (Sinxron hərəkətin açarı)
         let avatarFloat = Math.sin(animationFrame * 2.2) * 8;
 
         ctx.save();
 
         const avatarSize = 65;
-        // 🚀 İndi avatar və üçbucağın bütün nöqtələri bu ortaq oxa bağlanır:
         const aktivNöqtəMərkəzY = activeY + avatarFloat;
         const avatarY = activeY - 55 - avatarSize + avatarFloat;
         const avatarMərkəzY = avatarY + avatarSize / 2;
 
-        // İşıq Qradienti
         const lightGradient = ctx.createLinearGradient(activeX, aktivNöqtəMərkəzY, activeX, avatarMərkəzY);
         lightGradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
         lightGradient.addColorStop(0.4, 'rgba(255, 230, 120, 0.5)');
@@ -444,7 +450,6 @@ export default function GamingPath() {
         ctx.globalCompositeOperation = 'source-over';
 
         ctx.beginPath();
-        // 🚀 Üçbucağın təpəsi artıq tam olaraq tullanan nöqtənin mərkəzindən başlayır!
         ctx.moveTo(activeX, aktivNöqtəMərkəzY);
         ctx.lineTo(activeX - avatarSize * 0.7, avatarMərkəzY);
         ctx.lineTo(activeX + avatarSize * 0.7, avatarMərkəzY);
@@ -454,7 +459,6 @@ export default function GamingPath() {
         ctx.fill();
         ctx.restore();
 
-        // Avatarın Çəkilməsi
         const avatarX = activeX - avatarSize / 2;
 
         if (avatarImgRef.current && avatarImgRef.current.complete) {
@@ -489,6 +493,7 @@ export default function GamingPath() {
         }
         ctx.restore();
       }
+
       ctx.restore();
       animationId = requestAnimationFrame(render);
     };
@@ -522,7 +527,6 @@ export default function GamingPath() {
           const isLeftSide = nodeX < canvas.width / 2;
           const target = nodes[i];
 
-          // 🚀 Kliklənən nöqtənin sırasına uyğun heyvanı seçirik
           const assignedAnimal = animalsData[i % animalsData.length];
 
           playSFX('btn3', 0.5);
@@ -538,19 +542,21 @@ export default function GamingPath() {
               ? 'Bu səviyyə hələ kilidlidir. Əvvəlki dərsləri tamamla! 🔒'
               : target.type === 'lesson'
                 ? 'Mövzunun video izahı və konspekti. Başlamağa hazırsınız? 📺'
-                : `Bu tapşırıq sizə +${target.points} XP qazandıracak. Başlamağa hazırsınız?`,
+                : `Bu tapşırıq sizə +${target.points} XP qazandıracaq. Başlamağa hazırsınız?`,
             x: nodeX,
             y: nodeY,
             isLeftSide,
             state: target.status,
-            // 🚀 Heyvan məlumatını state-ə ötürürük
-            animal: assignedAnimal
+            animal: assignedAnimal,
+            remainingMs: target.status === 'weekly_locked' ? (target as any).remainingMs : 0
           });
           return;
         }
       }
       setActiveNode(null);
     };
+
+
 
     const handleWheel = (e: WheelEvent) => {
       scrollY += e.deltaY * 0.8;
@@ -566,10 +572,9 @@ export default function GamingPath() {
       canvas.removeEventListener('mousedown', handleMouseDown);
       window.removeEventListener('wheel', handleWheel);
     };
-    // 🚀 dependency array-ə avatarSrc izlənməsini əlavə etdik
   }, [loading, nodes, currentActiveIndex, avatarSrc]);
 
-  const startTask = (node: any) => {    
+  const startTask = (node: any) => {
     if (!node) return;
     playSFX('btn1', 0.5);
     if (node.type === 'lesson') {
@@ -618,11 +623,13 @@ export default function GamingPath() {
         {activeNode && (
           <div
             className={`absolute p-0 rounded-[28px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] w-[380px] z-[100] transition-all duration-300 transform scale-100 hover:scale-[1.02] border-b-[8px] pointer-events-auto overflow-hidden flex flex-col
-      ${activeNode.state === 'locked'
-                ? 'bg-slate-100 border-slate-400 text-slate-500'
-                : activeNode.type === 'lesson'
-                  ? 'bg-gradient-to-br from-sky-50 to-white border-sky-400'
-                  : 'bg-gradient-to-br from-amber-50 to-white border-amber-400'
+      ${activeNode.state === 'weekly_locked'
+                ? 'bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-500'
+                : activeNode.state === 'locked'
+                  ? 'bg-slate-100 border-slate-400 text-slate-500'
+                  : activeNode.type === 'lesson'
+                    ? 'bg-gradient-to-br from-sky-50 to-white border-sky-400'
+                    : 'bg-gradient-to-br from-amber-50 to-white border-amber-400'
               }
       ${activeNode.isLeftSide ? 'arrow-left' : 'arrow-right'}`}
             style={{
@@ -631,31 +638,35 @@ export default function GamingPath() {
             }}
             onMouseDown={(e) => e.stopPropagation()}
           >
-            {/* 1. Üst Rəngli Header Zolağı (Dərs və ya Tapşırığa görə dinamik dəyişir) */}
+            {/* 1. Header Zolağı (Sadə və Tək başlıq) */}
             <div className={`px-5 py-2.5 text-[11px] font-black tracking-widest uppercase flex justify-between items-center text-white
-      ${activeNode.state === 'locked'
-                ? 'bg-slate-400'
-                : activeNode.type === 'lesson'
-                  ? 'bg-gradient-to-r from-sky-400 to-blue-500'
-                  : 'bg-gradient-to-r from-amber-400 to-orange-500'
+      ${activeNode.state === 'weekly_locked'
+                ? 'bg-gradient-to-r from-indigo-500 to-purple-600'
+                : activeNode.state === 'locked'
+                  ? 'bg-slate-400'
+                  : activeNode.type === 'lesson'
+                    ? 'bg-gradient-to-r from-sky-400 to-blue-500'
+                    : 'bg-gradient-to-r from-amber-400 to-orange-500'
               }`}
             >
               <span className="truncate max-w-[240px]">{activeNode.moduleTitle}</span>
-              <span className="bg-white/20 px-2.5 py-0.5 rounded-full text-[10px]">
-                {activeNode.state === 'locked' ? 'KİLİDLİ 🔒' : activeNode.type === 'lesson' ? 'VİDEO DƏRS 📺' : 'ARENA ⚔️'}
+              <span className="bg-white/20 px-2.5 py-0.5 rounded-full text-[10px] backdrop-blur-sm">
+                {activeNode.type === 'lesson' ? 'VİDEO DƏRS 📺' : 'ARENA ⚔️'}
               </span>
             </div>
 
-            {/* 2. Kartın Gövdəsi (Flex Düzən) */}
+            {/* 2. Kartın Gövdəsi */}
             <div className="p-5 flex gap-4 items-start relative flex-1">
 
-              {/* SOL TƏRƏF: Sualı verən personaj (Heyvan) */}
+              {/* SOL TƏRƏF: Personaj */}
               {activeNode.animal && (
                 <div className="flex flex-col items-center flex-shrink-0 group">
                   <div className={`w-20 h-20 rounded-full overflow-hidden border-4 bg-white shadow-md transform transition-transform duration-300 group-hover:rotate-3 relative
-            ${activeNode.state === 'locked'
-                      ? 'border-slate-300 grayscale opacity-70'
-                      : activeNode.type === 'lesson' ? 'border-sky-300' : 'border-amber-300'
+            ${activeNode.state === 'weekly_locked'
+                      ? 'border-indigo-400 opacity-90'
+                      : activeNode.state === 'locked'
+                        ? 'border-slate-300 grayscale opacity-70'
+                        : activeNode.type === 'lesson' ? 'border-sky-300' : 'border-amber-300'
                     }`}
                   >
                     <img
@@ -663,17 +674,20 @@ export default function GamingPath() {
                       alt={activeNode.animal.nameAz}
                       className="w-full h-full object-cover"
                     />
-                    {/* Kilid ikonunun şəklin üzərinə gəlməsi */}
+                    {activeNode.state === 'weekly_locked' && (
+                      <div className="absolute inset-0 bg-indigo-900/30 flex items-center justify-center text-xl">⏳</div>
+                    )}
                     {activeNode.state === 'locked' && (
                       <div className="absolute inset-0 bg-slate-900/20 flex items-center justify-center text-xl">🔒</div>
                     )}
                   </div>
 
-                  {/* Heyvanın Ad Etiketi */}
                   <span className={`text-[11px] font-black mt-2 px-2.5 py-0.5 rounded-md shadow-sm border
-            ${activeNode.state === 'locked'
-                      ? 'bg-slate-200 border-slate-300 text-slate-500'
-                      : 'bg-white border-slate-200 text-slate-700'
+            ${activeNode.state === 'weekly_locked'
+                      ? 'bg-indigo-100 border-indigo-200 text-indigo-800'
+                      : activeNode.state === 'locked'
+                        ? 'bg-slate-200 border-slate-300 text-slate-500'
+                        : 'bg-white border-slate-200 text-slate-700'
                     }`}
                   >
                     {activeNode.animal.nameAz}
@@ -681,34 +695,47 @@ export default function GamingPath() {
                 </div>
               )}
 
-              {/* SAĞ TƏRƏF: Danışıq Balonu (Speech Bubble) Effekti ilə Mətnlər */}
-              <div className="flex-1 min-w-0 relative bg-white/60 p-3.5 rounded-2xl border border-slate-100 shadow-inner">
+              {/* SAĞ TƏRƏF: Mətn və Düymələr */}
+              <div className="flex-1 min-w-0 relative bg-white/70 p-3.5 rounded-2xl border border-slate-100 shadow-inner flex flex-col justify-between">
+                <div className="absolute top-6 -left-2 w-4 h-4 bg-white/70 border-l border-b border-slate-100 rotate-45 hidden md:block"></div>
 
-                {/* Balonun sol və ya sağ tərəfə baxan kiçik üçbucaq çıxıntısı */}
-                <div className="absolute top-6 -left-2 w-4 h-4 bg-white/60 border-l border-b border-slate-100 rotate-45 hidden md:block"></div>
+                <div>
+                  {/* Tapşırıq/Dərs Başlığı */}
+                  <h3 className={`m-0 mb-1.5 text-base font-black leading-tight truncate
+            ${activeNode.state === 'weekly_locked'
+                      ? 'hidden'
+                      : activeNode.state === 'locked'
+                        ? 'text-slate-400'
+                        : activeNode.type === 'lesson' ? 'text-sky-600' : 'text-amber-600'
+                    }`}
+                  >
+                    {activeNode.type === 'lesson' ? '📖 ' : `${activeNode.displayNumber}. `}
+                    {activeNode.title}
+                  </h3>
 
-                <h3 className={`m-0 mb-1 text-base font-black leading-tight truncate
-          ${activeNode.state === 'locked'
-                    ? 'text-slate-400'
-                    : activeNode.type === 'lesson' ? 'text-sky-600' : 'text-amber-600'
-                  }`}
-                >
-                  {activeNode.type === 'lesson' ? '📖 ' : `${activeNode.displayNumber}. `}
-                  {activeNode.title}
-                </h3>
+                  {/* DİNOMİK MƏTN (Normal Açıqlama və ya Fərqli Rəngdə Xüsusi Xəbərdarlıq) */}
+                  {activeNode.state === 'weekly_locked' ? (
+                    <div className="space-y-2">
+                      <p className="m-0 text-purple-700 text-md font-black bg-purple-100/80 px-2.5 py-1.5 rounded-lg border border-purple-200/60 inline-block">
+                        {formatCountdown(activeNode.remainingMs)}
+                      </p>
+                    </div>
+                  ) : activeNode.state === 'locked' ? (
+                    <p className="m-0 text-slate-500 text-xs font-bold leading-relaxed">
+                      Dayan! 🛑 Bu cığır hələ kəşf olunmayıb. Keçid açmaq üçün əvvəlki tapşırıqları uğurla tamamlamalısan!
+                    </p>
+                  ) : (
+                    <p className="m-0 text-slate-600 text-xs font-bold leading-relaxed">
+                      {activeNode.desc}
+                    </p>
+                  )}
+                </div>
 
-                <p className="m-0 text-slate-600 text-xs font-bold leading-relaxed mb-4 line-clamp-3">
-                  {activeNode.state === 'locked'
-                    ? "Dayan! 🛑 Bu cığır hələ kəşf olunmayıb. Keçid açmaq üçün əvvəlki tapşırıqları uğurla tamamlamalısan!"
-                    : activeNode.desc
-                  }
-                </p>
-
-                {/* Hərəkət Düyməsi */}
-                {activeNode.state !== 'locked' ? (
+                {/* DÜYMƏ BÖLMƏSİ (Yalnız Aktiv və Sıradan Kilidli olanlar üçün) */}
+                {activeNode.state === 'active' ? (
                   <button
                     onClick={() => startTask(activeNode)}
-                    className={`w-full text-white font-black text-xs text-center py-3 rounded-xl border-b-[4px] transition-all cursor-pointer uppercase tracking-widest active:border-b-0 active:translate-y-[4px]
+                    className={`w-full text-white font-black text-xs text-center py-3 mt-3 rounded-xl border-b-[4px] transition-all cursor-pointer uppercase tracking-widest active:border-b-0 active:translate-y-[4px]
               ${activeNode.type === 'lesson'
                         ? 'bg-sky-500 border-sky-700 hover:bg-sky-400'
                         : 'bg-amber-500 border-amber-700 hover:bg-amber-400'
@@ -716,25 +743,35 @@ export default function GamingPath() {
                   >
                     {activeNode.type === 'lesson' ? 'DƏRSƏ BAX 📺' : 'KODLAMAĞA BAŞLA 🚀'}
                   </button>
-                ) : (
-                  <div className="w-full bg-slate-200 text-slate-400 border-b-[4px] border-slate-300 font-black text-center py-2.5 rounded-xl text-xs uppercase tracking-wider cursor-not-allowed">
+                ) : activeNode.state === 'locked' ? (
+                  <div className="w-full bg-slate-200 text-slate-400 border-b-[4px] border-slate-300 font-black text-center py-2.5 mt-3 rounded-xl text-xs uppercase tracking-wider cursor-not-allowed">
                     GİRİŞ QADAĞANDIR 🔒
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
 
-            {/* Ox işarələrinin CSS ləri (Dinamik rənglərə uyğunlaşdırılıb) */}
+            {/* Dinamik Ox CSS İzləyicisi */}
             <style jsx>{`
       .arrow-left::after {
         content: ''; position: absolute; top: 65px; left: -24px;
         border-width: 12px; border-style: solid;
-        border-color: transparent ${activeNode.state === 'locked' ? '#94a3b8' : activeNode.type === 'lesson' ? '#38bdf8' : '#fbbf24'} transparent transparent;
+        border-color: transparent ${activeNode.state === 'weekly_locked'
+                ? '#6366f1'
+                : activeNode.state === 'locked'
+                  ? '#94a3b8'
+                  : activeNode.type === 'lesson' ? '#38bdf8' : '#fbbf24'
+              } transparent transparent;
       }
       .arrow-right::after {
         content: ''; position: absolute; top: 65px; right: -24px;
         border-width: 12px; border-style: solid;
-        border-color: transparent transparent transparent ${activeNode.state === 'locked' ? '#94a3b8' : activeNode.type === 'lesson' ? '#38bdf8' : '#fbbf24'};
+        border-color: transparent transparent transparent ${activeNode.state === 'weekly_locked'
+                ? '#6366f1'
+                : activeNode.state === 'locked'
+                  ? '#94a3b8'
+                  : activeNode.type === 'lesson' ? '#38bdf8' : '#fbbf24'
+              };
       }
     `}</style>
           </div>

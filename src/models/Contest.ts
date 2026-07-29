@@ -1,3 +1,4 @@
+import { number } from 'framer-motion';
 import mongoose, { Schema, model, Document } from 'mongoose';
 
 export interface ISampleCase {
@@ -19,7 +20,7 @@ export interface IQuestion {
   inputFormat: string;
   outputFormat: string;
   constraints: string[]; // ['Time Limit: 1.0s', 'Memory: 256MB']
-  pointsPerTest: number;
+  pointsPerTest: number;  
   totalTestCases: number;
   sampleCases: ISampleCase[];
   testCases: ITestCase[]; // Real yoxlanış testləri (Şagirddən gizlidir)

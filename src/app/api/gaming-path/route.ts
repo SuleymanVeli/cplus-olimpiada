@@ -3,68 +3,127 @@ import connectDB from '@/src/lib/dbConnect';
 import Module from '@/src/models/Module';
 import Task from '@/src/models/Task';
 import UserProgress from '@/src/models/UserProgress';
+import User from '@/src/models/User';
 
 export async function GET(req: NextRequest) {
-  // try {
+  try {
     await connectDB();
 
-    if (!req.nextUrl.searchParams.has('userId')) {
-      return NextResponse.json({ success: false, message: "userId query parameter is required." }, { status: 400 });
-    }
-
-    const userId = req.nextUrl.searchParams.get('userId')!;
-
+    const userId = req.nextUrl.searchParams.get('userId');
     const level = parseInt(req.nextUrl.searchParams.get('level') || '1', 10);
 
-    // Bütün modulları və içindəki taskları çəkirik
-    // Modullerda level olmayanda 1 olaraq qəbul edirik
+    if (!userId) {
+      return NextResponse.json({ success: false, message: "userId vacibdir." }, { status: 400 });
+    }
 
-    const modules = await Module.find({ level: level })
+    const user = await User.findById(userId).lean();
+    if (!user) {
+      return NextResponse.json({ success: false, message: "İstifadəçi tapılmadı." }, { status: 404 });
+    }
+
+    const maxWeeklyLimit = user.weeklyModuleLimit || 2;
+
+    const weeklyDays = user.weeklyLessonDays || 7;
+
+    const allModules = await Module.find({ level })
       .sort({ order: 1 })
       .populate({ path: 'tasks', model: Task })
       .lean();
-    let progress = await UserProgress.findOne({ userId: userId , level: level }).lean();
 
-    // Əgər progress yoxdursa ilk modulla başladırıq
-    if (!progress && modules.length > 0) {
+    let progress = await UserProgress.findOne({ userId, level });
+
+    const now = new Date();
+
+    // Əgər progress yoxdursa yaradılır (İlk giriş tarixi qeyd olunur)
+    if (!progress && allModules.length > 0) {
       progress = await UserProgress.create({
-        userId: userId,
+        userId,
         totalXp: 0,
-        currentModuleId: modules[0]._id,
+        currentModuleId: allModules[0]._id,
         currentTaskOrder: 0,
         completedLessons: [],
         completedTasks: [],
         completedModules: [],
         solvedTasks: [],
-        level: level
+        level,
+        unlockedModulesThisWeek: 0, // İlk modul açıq başlayır
+        weekStartDate: now // İlk girişdə 7 günlük taymer başlayır
       });
     }
 
-    const flatNodes: any[] = [];
+    // -------------------------------------------------------------
+    // HƏFTƏLİK LİMİTİN "GET" ZAMANI SIFIRLANMASI
+    // -------------------------------------------------------------
+    const weekStart = new Date(progress.weekStartDate || now);
+    const diffInDays = (now.getTime() - weekStart.getTime()) / (1000 * 3600 * 24);
 
-    // String massivlərinə çeviririk ki, .includes() rahat işləsin
+    if (diffInDays >= weeklyDays) {
+      progress.unlockedModulesThisWeek = 0;
+      progress.weekStartDate = now;
+      await progress.save();
+    }
+
+    const isWeeklyLimitReached = progress.unlockedModulesThisWeek >= maxWeeklyLimit;
+
+    // -------------------------------------------------------------
+    // MODUL PƏNCƏRƏSİNİ (3-4 MODUL) MƏRKƏZLƏŞDİRMƏ
+    // -------------------------------------------------------------
+    const currentModIdStr = progress.currentModuleId?.toString();
+
+    // Cari aktiv modulun indeksini tapırıq
+    let currentIndex = allModules.findIndex(
+      (m: any) => m._id.toString() === currentModIdStr
+    );
+
+    // Əgər kurs bitibsə və ya tapılmayıbsa, sonuncu modula fokuslanırıq
+    if (currentIndex === -1) {
+      currentIndex = allModules.length - 1;
+    }
+
+    // Pəncərə Hesablanması: Cari moduldan 1 geridəki moduldan başlayıb, ümumi 4 modul götürürük
+    // Məsələn: Index 2-dəyiksə -> [1, 2, 3, 4] modulları görünəcək.
+    const RANGE_BEFORE = 1; // Geridə neçə modul olsun
+    const TOTAL_VISIBLE_MODULES = 4; // Ümumi göstəriləcək modul sayı
+
+    let startIndex = Math.max(0, currentIndex - RANGE_BEFORE);
+    let endIndex = startIndex + TOTAL_VISIBLE_MODULES;
+
+    // Massiv sərhədini aşmamaq üçün tənzimləmə
+    if (endIndex > allModules.length) {
+      endIndex = allModules.length;
+      startIndex = Math.max(0, endIndex - TOTAL_VISIBLE_MODULES);
+    }
+
+    const visibleModules = allModules.slice(startIndex, endIndex);
+
+    // -------------------------------------------------------------
+    // NODELARIN MƏNTİQİ (Yalniz seçilmiş visibleModules üçün)
+    // -------------------------------------------------------------
+    const flatNodes: any[] = [];
     const compTasks = progress.completedTasks.map((id: any) => id.toString());
     const compLessons = progress.completedLessons.map((id: any) => id.toString());
     const compModules = progress.completedModules.map((id: any) => id.toString());
-    const currentModIdStr = progress?.currentModuleId?.toString();
 
-    const currentModule = await Module.findById(currentModIdStr);
+    // GET Route faylınızdakı ilgili hissələr:
 
-    modules.forEach((mod: any) => {
+    // Həftəlik sıfırlanmaya qalan tam milisaniyə
+    const remainingMs = Math.max(0, (weeklyDays * 24 * 60 * 60 * 1000) - (now.getTime() - weekStart.getTime()));
+
+    visibleModules.forEach((mod: any) => {
       const isCurrentModul = currentModIdStr === mod._id.toString();
-      const isModuleCompleted = compModules.includes(mod._id.toString());
+      const isModuleCompleted = mod.order < allModules.find((m: any) => m._id.toString() === currentModIdStr)?.order;
 
-      const isModuleOld = mod?.order <  currentModule?.order;
+      // Limit dolubsa və modul bitməyibsə -> 'weekly_locked'
+      const forceLockDueToLimit = isWeeklyLimitReached && !isModuleCompleted;
 
-      // A) DƏRS (LESSON) NODE
-      let lessonStatus: 'completed' | 'active' | 'locked' = 'locked';
-
-      const isLessonCompleted = compLessons.includes(mod._id.toString())
+      // 1. LESSON NODE STATUS
+      let lessonStatus: 'completed' | 'active' | 'locked' | 'weekly_locked' = 'locked';
+      const isLessonCompleted = compLessons.includes(mod._id.toString());
 
       if (isLessonCompleted) {
         lessonStatus = 'completed';
-      } else if (isCurrentModul && progress?.currentTaskOrder === 0) {
-        lessonStatus = 'active';
+      } else if (isCurrentModul && progress.currentTaskOrder === 0) {
+        lessonStatus = forceLockDueToLimit ? 'weekly_locked' : 'active';
       }
 
       flatNodes.push({
@@ -73,25 +132,22 @@ export async function GET(req: NextRequest) {
         title: `${mod.title} (Mühazirə)`,
         moduleTitle: mod.title,
         status: lessonStatus,
-        points: 0,
-        new: ((isModuleCompleted && !isLessonCompleted) || (isModuleOld && !isLessonCompleted))
+        remainingMs, // Qalan dəqiq vaxt (ms)
+        points: 0
       });
 
-      // B) TAPŞIRIQLAR (TASK) NODES
+      // 2. TASK NODES STATUS
       if (mod.tasks && Array.isArray(mod.tasks)) {
-        // Taskları öz order-lərinə görə sıralayırıq
         const sortedTasks = [...mod.tasks].sort((a, b) => a.order - b.order);
 
-        sortedTasks.forEach((task: any, index: number) => {
-          const taskOrder = index + 1; // 1, 2, 3...
-          const isTaskCompleted = compTasks.includes(task._id.toString());
-
-          let taskStatus: 'completed' | 'active' | 'locked' = 'locked';
+        sortedTasks.forEach((task: any) => {
+          const isTaskCompleted = isModuleCompleted || (isCurrentModul && task.order < progress.currentTaskOrder);
+          let taskStatus: 'completed' | 'active' | 'locked' | 'weekly_locked' = 'locked';
 
           if (isTaskCompleted) {
             taskStatus = 'completed';
-          } else if (isCurrentModul && taskOrder === progress.currentTaskOrder) {
-            taskStatus = 'active';
+          } else if (isCurrentModul && task.order === progress.currentTaskOrder) {
+            taskStatus = forceLockDueToLimit ? 'weekly_locked' : 'active';
           }
 
           flatNodes.push({
@@ -100,15 +156,34 @@ export async function GET(req: NextRequest) {
             title: task.title,
             moduleTitle: mod.title,
             status: taskStatus,
+            remainingMs, // Qalan dəqiq vaxt (ms)
             points: task.points,
-            new: ((isModuleCompleted && !isTaskCompleted) || (isModuleOld && !isTaskCompleted) )
           });
         });
       }
     });
 
-    return NextResponse.json({ success: true, data: flatNodes }, { status: 200 });
-  // } catch (error: any) {
-  //   return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-  // }
+    return NextResponse.json({
+      success: true,
+      pagination: {
+        totalModules: allModules.length,
+        visibleRange: {
+          startModuleIndex: startIndex + 1,
+          endModuleIndex: endIndex
+        },
+        hasPreviousModules: startIndex > 0,
+        hasNextModules: endIndex < allModules.length
+      },
+      weeklyLimitInfo: {
+        maxWeeklyLimit,
+        unlockedThisWeek: progress.unlockedModulesThisWeek,
+        isWeeklyLimitReached,
+        daysUntilReset: Math.max(0, Math.ceil(7 - diffInDays))
+      },
+      data: flatNodes
+    }, { status: 200 });
+
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
 }

@@ -15,7 +15,11 @@ const UserSchema = new mongoose.Schema({
   assignedTasks: [{
     taskId: { type: mongoose.Schema.Types.ObjectId, ref: 'Task' },
     assignedAt: { type: Date, default: Date.now }
-  }]
+  }],
+  weeklyModuleLimit: { type: Number, default: 2 }, // Bir həftədə aça biləcəyi maks modul sayı
+  weeklyLessonDays: { type: Number, default: 7 }, // bir ders heftesinde nece gün var
+  musicVolume: { type: Number, default: 0.12 },
+  musicIsActive: { type: Boolean, default: true } 
 });
 
 UserSchema.virtual('submissions', {

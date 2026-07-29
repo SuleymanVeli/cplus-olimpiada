@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import ContestStickyCard from '@/src/components/ContestStickyCard';
 import GameFloatingButton from '@/src/components/GameFloatingButton';
+import BackgroundMusic from '@/src/components/BackgroundMusic';
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   const { userData, setUserData, logout } = useUser();
@@ -190,6 +191,8 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
       </main>
 
      { false && <GameFloatingButton />}
+
+          <BackgroundMusic/>
 
       {/* PROFIL MODAL */}
       {isEditOpen && (
