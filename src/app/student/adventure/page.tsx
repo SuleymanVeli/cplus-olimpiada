@@ -788,7 +788,7 @@ export default function JungleGamingPath() {
           </div>
         )}
 
-        {userData && <ContestList level={2} navigateTo={navigateTo}/>}
+        {userData && <ContestList playSFX={playSFX} level={2} navigateTo={navigateTo}/>}
 
         <canvas ref={canvasRef} className="cursor-pointer block" />
       </div>

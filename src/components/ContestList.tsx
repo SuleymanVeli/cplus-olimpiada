@@ -7,9 +7,10 @@ import ContestStickyCard from './ContestStickyCard';
 interface ContestListProps {
   level: any;
   navigateTo: any;
+  playSFX: any;
 }
 
-export default function ContestList({ level, navigateTo }: ContestListProps) {
+export default function ContestList({ level, navigateTo, playSFX }: ContestListProps) {
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [activeContests, setActiveContests] = useState<any[]>([]);
   const [isSubsLoading, setIsSubsLoading] = useState(true);
@@ -90,6 +91,7 @@ export default function ContestList({ level, navigateTo }: ContestListProps) {
             activeContest={contest}
             submissions={submissions}
             navigateTo={navigateTo}
+            playSFX= {playSFX}
           />
         );
       })}

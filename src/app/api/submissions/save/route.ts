@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import  connectToDatabase  from '@/src/lib/dbConnect';
-import  Submission from '@/models/Submission';
+import connectToDatabase from '@/src/lib/dbConnect';
+import Submission from '@/models/Submission';
 
 export async function POST(req: NextRequest) {
   try {
     await connectToDatabase();
-    const { contestId, questionId, studentId, code } = await (req?.body  as any).json();
+    
+    // DÜZƏLİŞ: req.json() birbaşa req üzərindən çağırılır
+    const { contestId, questionId, studentId, code } = await req.json();
     
     const updatePath = `progress.${questionId}`;
 

@@ -22,7 +22,7 @@ const getTrackForPath = (path: string): string => {
   if (path.startsWith('/student/adventure') || path.includes('/student/learning')) {
     return '/audio/bg/bg4.mp3';
   }
-  if (path.startsWith('/student/gamearena') || path.includes('/student/arena/') ||  path.includes('/student/lessons/')) {
+  if (path.startsWith('/student/gamearena') || path.includes('/student/arena/') ||  path.includes('/student/lessons/') || path.includes('/student/contest/')) {
     return '/audio/bg/bg2.mp3';
   }
   

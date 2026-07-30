@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Clock, X, PlayCircle, Eye, CheckCircle2, XCircle, AlertCircle, Award, Code2, FileText, Loader2 } from 'lucide-react';
+import { Clock, X, PlayCircle, Eye, CheckCircle2, XCircle, AlertCircle, Award, Code2, FileText, Loader2, ChevronUp, ChevronDown, Sparkles } from 'lucide-react';
 
 interface QuestionData {
   _id: string;
@@ -28,6 +28,7 @@ interface ContestStickyCardProps {
   submissions: any[];
   navigateTo: (url: string) => void;
   isLoading?: boolean;
+  playSFX: any
 }
 
 export default function ContestStickyCard({
@@ -35,9 +36,10 @@ export default function ContestStickyCard({
   activeContest,
   submissions,
   navigateTo,
+  playSFX,
   isLoading = false
 }: ContestStickyCardProps) {
-  const [isContestCardOpen, setIsContestCardOpen] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [isResultsModalOpen, setIsResultsModalOpen] = useState(false);
   const [contestStatus, setContestStatus] = useState<'not_started' | 'live' | 'completed'>('live');
   const [timeLeftStr, setTimeLeftStr] = useState('');
@@ -68,7 +70,6 @@ export default function ContestStickyCard({
 
   const currentStudentScore = currentSubmission ? (currentSubmission.totalScore || 0) : 0;
 
-  // Taymer mexanizmi
   useEffect(() => {
     if (!activeContest || isLoading) return;
 
@@ -78,23 +79,21 @@ export default function ContestStickyCard({
       const totalHours = Math.floor(totalMinutes / 60);
       const days = Math.floor(totalHours / 24);
 
-      if (days >= 1) return `${days} gün`;
-
+      if (days >= 1) return `${days}d`;
       const hours = totalHours % 24;
       const minutes = totalMinutes % 60;
       const seconds = totalSeconds % 60;
 
       if (hideSeconds) {
         if (hours > 0) return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-        return `${minutes} dəq`;
+        return `${minutes}m`;
       }
 
       if (hours > 0) return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
       if (minutes > 0) return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-      return `${seconds} san`;
+      return `${seconds}s`;
     };
 
-    // Vəziyyəti anında yoxlayan funksiya
     const checkStatusAndRoute = () => {
       const now = new Date().getTime();
       const contestStart = new Date(activeContest.startTime).getTime();
@@ -102,8 +101,8 @@ export default function ContestStickyCard({
 
       if (isFullySolved) {
         setContestStatus('completed');
-        setTimeLeftStr('Sınaq Tamamlandı! 🎉');
-        return false; // clearInterval siqnalı
+        setTimeLeftStr('Tamamlandı 🎉');
+        return false;
       }
 
       if (now < contestStart) {
@@ -139,9 +138,7 @@ export default function ContestStickyCard({
       return true;
     };
 
-    // ⚡ İlk renderdə 1 saniyə gözləmədən dərhal işə salırıq!
     const shouldContinue = checkStatusAndRoute();
-    
     if (!shouldContinue) return;
 
     const timer = setInterval(() => {
@@ -169,147 +166,287 @@ export default function ContestStickyCard({
 
   if (!showInfoCard) return null;
 
-  // ==================== ⏳ SKELETON LOADING VEZİYYƏTİ ====================
-  // Əgər kənardan isLoading gəlibsə VƏ YA activeContest hələ yoxdursa VƏ YA taymer mətni hələ hesablanıb bitməyibsə skeleton göstərilsin
+  // 🌸 Açıq Tema Vizual Konfiqurasiyaları
+  const statusThemes = {
+    completed: {
+      bgDot: 'bg-indigo-500',
+      text: 'text-indigo-600',
+      badge: 'bg-indigo-50 text-indigo-600 border-indigo-200/60',
+      boxBg: 'bg-indigo-50/50 border-indigo-100',
+      btn: 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200',
+      border: 'border-indigo-200/80 shadow-indigo-100/60'
+    },
+    not_started: {
+      bgDot: 'bg-sky-500',
+      text: 'text-sky-600',
+      badge: 'bg-sky-50 text-sky-600 border-sky-200/60',
+      boxBg: 'bg-sky-50/50 border-sky-100',
+      btn: 'bg-slate-100 text-slate-400 border border-slate-200',
+      border: 'border-sky-200/80 shadow-sky-100/60'
+    },
+    live: hasStartedContest ? {
+      bgDot: 'bg-amber-500',
+      text: 'text-amber-600',
+      badge: 'bg-amber-50 text-amber-700 border-amber-200/60',
+      boxBg: 'bg-amber-50/50 border-amber-100',
+      btn: 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-200',
+      border: 'border-amber-200/80 shadow-amber-100/60'
+    } : {
+      bgDot: 'bg-emerald-500',
+      text: 'text-emerald-600',
+      badge: 'bg-emerald-50 text-emerald-700 border-emerald-200/60',
+      boxBg: 'bg-emerald-50/50 border-emerald-100',
+      btn: 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-200',
+      border: 'border-emerald-200/80 shadow-emerald-100/60'
+    }
+  };
+
+  const activeTheme = statusThemes[contestStatus];
+
   if (isLoading || !activeContest || !timeLeftStr) {
     return (
-      <div className="pointer-events-auto animate-in fade-in duration-300">
-        {isContestCardOpen ? (
-          <div className="w-80 bg-white/95 border-2 border-slate-100 border-b-slate-300 rounded-[24px] shadow-xl p-5 flex flex-col relative border-b-[6px] animate-pulse">
-            <div className="flex items-center gap-2 mb-4 border-b border-slate-100 pb-2.5">
-              <div className="w-6 h-6 bg-slate-200 rounded-lg flex items-center justify-center">
-                <Loader2 size={12} className="text-slate-400 animate-spin" />
-              </div>
-              <div className="h-3 bg-slate-200 rounded w-28" />
-            </div>
-            
-            <div className="space-y-2 mb-4">
-              <div className="h-4 bg-slate-200 rounded w-full" />
-              <div className="h-4 bg-slate-200 rounded w-2/3" />
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 mb-4">
-              <div className="bg-slate-50 border border-slate-100 rounded-xl p-2 h-11" />
-              <div className="bg-slate-50 border border-slate-100 rounded-xl p-2 h-11" />
-              <div className="bg-slate-50 border border-slate-100 rounded-xl p-2 h-11" />
-            </div>
-
-            <div className="rounded-2xl p-4 border border-slate-100 text-center mb-4 bg-slate-50/50 h-16 flex flex-col items-center justify-center gap-2">
-              <div className="h-2 bg-slate-200 rounded w-20" />
-              <div className="h-4 bg-slate-200 rounded w-32" />
-            </div>
-
-            <div className="w-full h-10 bg-slate-200 rounded-xl" />
-          </div>
-        ) : (
-          <div className="bg-slate-800 text-slate-400 px-4 py-3.5 rounded-2xl shadow-lg flex items-center gap-2 font-mono font-black text-xs uppercase border-b-4 border-b-slate-900 animate-pulse">
-            <Loader2 size={14} className="animate-spin" />
-            <span>Yüklənir...</span>
-          </div>
-        )}
+      <div className="pointer-events-auto bg-white/90 backdrop-blur-md text-slate-600 rounded-full px-4 py-2 shadow-lg border border-slate-200 flex items-center gap-2 font-mono text-xs animate-pulse">
+        <Loader2 size={13} className="animate-spin text-slate-400" />
+        <span>Yüklənir...</span>
       </div>
     );
   }
 
-  // ==================== 🎉 DATA HAZIR OLANDAN SONRAKI RENDER ====================
   return (
-    <div className="pointer-events-auto animate-in fade-in slide-in-from-right duration-500">
-      {isContestCardOpen ? (
-        <div className={`w-80 bg-white/95 border-2 rounded-[24px] shadow-xl p-5 flex flex-col relative border-b-[6px] transition-all duration-300 ${
-          contestStatus === 'completed' ? 'border-indigo-200 border-b-indigo-500' :
-          contestStatus === 'not_started' ? 'border-sky-200 border-b-sky-500' :
-          hasStartedContest ? 'border-amber-200 border-b-amber-500' : 'border-emerald-200 border-b-emerald-500'
-        }`}>
-          <button onClick={() => setIsContestCardOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"><X size={16} /></button>
-
-          <div className="flex items-center gap-2 mb-4 border-b border-slate-100 pb-2.5">
-            <div className={`p-1.5 rounded-lg text-white ${contestStatus === 'completed' ? 'bg-gradient-to-tr from-indigo-500 to-purple-600' : contestStatus === 'not_started' ? 'bg-gradient-to-tr from-sky-500 to-blue-600' : hasStartedContest ? 'bg-gradient-to-tr from-amber-500 to-orange-600 animate-pulse' : 'bg-gradient-to-tr from-emerald-400 to-teal-500'}`}><Clock size={14} /></div>
-            <span className={`font-black text-[10px] tracking-widest uppercase font-mono ${contestStatus === 'completed' ? 'text-indigo-700' : contestStatus === 'not_started' ? 'text-sky-700' : hasStartedContest ? 'text-amber-700' : 'text-emerald-700'}`}>{contestStatus === 'completed' ? 'Sınaq Bitdi' : contestStatus === 'not_started' ? 'Gözlənilən Sınaq' : hasStartedContest ? "Canlı Sınaq Taymeri" : "Yeni Sınaq Mövcuddur!"}</span>
-          </div>
-
-          <h4 className="font-black text-slate-900 text-sm tracking-tight leading-snug mb-4">{activeContest.title}</h4>
-
-          <div className="grid grid-cols-3 gap-2 mb-4 text-center">
-            <div className="bg-slate-50 border border-slate-100 rounded-xl p-2"><span className="block text-[8px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Sual</span><span className="font-mono font-black text-xs text-slate-700">{activeContest.questions?.length || 0} ədəd</span></div>
-            <div className="bg-slate-50 border border-slate-100 rounded-xl p-2"><span className="block text-[8px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Müddət</span><span className="font-mono font-black text-xs text-slate-700">{activeContest.durationMinutes} dəq</span></div>
-            <div className="bg-slate-50 border border-slate-100 rounded-xl p-2"><span className="block text-[8px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Maks. Bal</span><span className="font-mono font-black text-xs text-slate-700">{totalContestScore} xal</span></div>
-          </div>
-
-          <div className={`rounded-2xl p-4 border text-center mb-4 bg-gradient-to-br ${contestStatus === 'completed' ? 'from-indigo-50 to-purple-50/50 border-indigo-100/70' : contestStatus === 'not_started' ? 'from-sky-50 to-blue-50/50 border-sky-100/70' : hasStartedContest ? 'from-amber-50 to-orange-50/50 border-amber-100/70' : 'from-emerald-50 to-teal-50/50 border-emerald-100/70'}`}>
-            <span className={`block text-[9px] font-black uppercase tracking-widest mb-1 ${contestStatus === 'completed' ? 'text-indigo-600' : contestStatus === 'not_started' ? 'text-sky-600' : hasStartedContest ? 'text-amber-600' : 'text-emerald-600'}`}>{contestStatus === 'completed' ? "Sənin Topladığın Bal" : contestStatus === 'not_started' ? "Başlamasına Qalan Vaxt" : hasStartedContest ? "İmtahanın Bitməsinə Qalan" : "Giriş üçün Son Şans"}</span>
-            <span className={`font-mono font-black tracking-tight drop-shadow-sm tabular-nums ${contestStatus === 'completed' ? 'text-indigo-600 text-lg' : 'text-xl ' + (contestStatus === 'not_started' ? 'text-sky-600' : hasStartedContest ? 'text-orange-600' : 'text-emerald-600')}`}>{contestStatus === 'completed' ? `XAL: ${currentStudentScore} / ${totalContestScore}` : timeLeftStr}</span>
-          </div>
-
-          {contestStatus === 'not_started' ? (
-            <div className="w-full text-center py-2.5 bg-slate-100 text-slate-400 rounded-xl font-bold text-[10px] uppercase tracking-wider font-mono border border-slate-200">Sınağın açılmasını gözləyin 🔒</div>
-          ) : contestStatus === 'completed' ? (
-            <div className="flex flex-col gap-2">
-              <div className="w-full text-center py-2 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-xl font-black text-[10px] uppercase tracking-widest font-mono">Sınaq başa çatdı</div>
-              <button onClick={() => setIsResultsModalOpen(true)} className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest border-b-[4px] border-indigo-700 active:border-b-0 active:translate-y-[4px] transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"><Eye size={13} /> Nəticələri İncələ</button>
+    <div className="pointer-events-auto animate-in fade-in duration-300">
+      {/* 🌸 AÇIQ ŞİRİN DYNAMIC ISLAND KAPSUL */}
+      <div 
+        className={`bg-white/80 backdrop-blur-md border text-slate-800 shadow-xl transition-all duration-300 overflow-hidden ${activeTheme.border} ${
+          isExpanded ? 'w-72 rounded-3xl p-4' : 'w-auto rounded-3xl px-4 py-2 cursor-pointer'
+        }`}
+        onClick={() => {
+          !isExpanded && setIsExpanded(true);
+          playSFX('btn2', 0.5);
+        }}
+      >
+        {/* --- YIĞILMIŞ HAL (COLLAPSED PILL) --- */}
+        {!isExpanded ? (
+          <div className="flex items-center gap-2.5 select-none">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${activeTheme.bgDot}`} />
+              <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${activeTheme.bgDot}`} />
+            </span>
+            
+            <span className="font-bold text-xs tracking-tight text-slate-800 max-w-[110px] truncate">{activeContest.title}</span>
+            <span className="text-slate-300">•</span>
+            
+            <div className="flex items-center gap-1 font-mono font-bold text-xs text-slate-700">
+              <Clock size={12} className={contestStatus === 'live' ? 'animate-spin text-slate-400' : 'text-slate-400'} style={{ animationDuration: '6s' }} />
+              <span>{contestStatus === 'completed' ? `${currentStudentScore} X` : timeLeftStr}</span>
             </div>
-          ) : (
-            <button onClick={() => navigateTo(`/student/contest/${activeContest._id}`)} className={`w-full text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest border-b-[4px] active:border-b-0 active:translate-y-[4px] transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer ${hasStartedContest ? 'from-amber-500 to-orange-500 bg-gradient-to-r border-amber-700' : 'from-emerald-400 to-teal-500 bg-gradient-to-r border-emerald-700'}`}><PlayCircle size={14} />{hasStartedContest ? "Arenaya Qayıt" : "Sınağı Başlat"}</button>
-          )}
+
+            <ChevronDown size={14} className="text-slate-400 ml-0.5" />
+          </div>
+        ) : (
+          /* --- AÇILMIŞ HAL (EXPANDED WIDGET) --- */
+          <div className="flex flex-col space-y-3 animate-in fade-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-1.5">
+                <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase font-mono border ${activeTheme.badge}`}>
+                  {contestStatus === 'completed' ? 'Bitdi' : contestStatus === 'not_started' ? 'Gözlənilir' : hasStartedContest ? 'Canlı' : 'Yeni'}
+                </span>
+                <span className="text-[10px] font-mono text-slate-400 font-bold">{activeContest.questions?.length || 0} Sual / {totalContestScore} P</span>
+              </div>
+              <button 
+                onClick={(e) => { e.stopPropagation(); setIsExpanded(false); }}
+                className="text-slate-400 hover:text-slate-600 transition-colors p-1 hover:bg-slate-100 rounded-full cursor-pointer"
+              >
+                <ChevronUp size={14} />
+              </button>
+            </div>
+
+            {/* Sınaq Adı */}
+            <div>
+              <h4 className="font-bold text-slate-800 text-xs tracking-tight line-clamp-1">{activeContest.title}</h4>
+            </div>
+
+            {/* Taymer Və Bal Görünüşü */}
+            <div className={`rounded-2xl p-2.5 border flex items-center justify-between ${activeTheme.boxBg}`}>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                {contestStatus === 'completed' ? "Toplanan Bal:" : "Qalan Vaxt:"}
+              </span>
+              <span className={`font-mono font-black text-sm tabular-nums ${activeTheme.text}`}>
+                {contestStatus === 'completed' ? `${currentStudentScore} / ${totalContestScore}` : timeLeftStr}
+              </span>
+            </div>
+
+            {/* Düymələr */}
+            {contestStatus === 'not_started' ? (
+              <div className="w-full text-center py-2 bg-slate-100 text-slate-400 rounded-xl font-bold text-[10px] uppercase tracking-wider font-mono">
+                Başlamasını Gözləyin 🔒
+              </div>
+            ) : contestStatus === 'completed' ? (
+              <button 
+                onClick={() => setIsResultsModalOpen(true)} 
+                className={`w-full py-2.5 rounded-xl font-bold text-[10px] uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer ${activeTheme.btn}`}
+              >
+                <Eye size={13} /> Nəticələri İncələ
+              </button>
+            ) : (
+              <button 
+                onClick={() => navigateTo(`/student/contest/${activeContest._id}`)} 
+                className={`w-full py-2.5 rounded-xl font-bold text-[10px] uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer ${activeTheme.btn}`}
+              >
+                <PlayCircle size={13} />
+                {hasStartedContest ? "Arenaya Qayıt" : "Sınağa Başla"}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 🌸 AÇIQ VƏ İNCƏ NƏTİCƏ MODALI */}
+ {isResultsModalOpen && (
+  <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/30 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="bg-slate-50 border border-slate-200/80 text-slate-800 w-full max-w-2xl rounded-[2.5rem] shadow-2xl shadow-slate-300/50 overflow-hidden flex flex-col p-6 space-y-5">
+      
+      {/* 🌸 HEADER: Başlıq və Ümumi Bal */}
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-white border border-slate-200/80 text-amber-500 flex items-center justify-center shadow-sm">
+            <Sparkles size={18} />
+          </div>
+          <div>
+            <h3 className="font-extrabold text-slate-900 text-sm tracking-tight">Sınaq Xülasəsi</h3>
+            <p className="text-[11px] font-medium text-slate-500">
+              Cəmi {activeContest.questions?.length || 0} sualdan ibarət sınaq nəticəsi
+            </p>
+          </div>
         </div>
-      ) : (
-        <button onClick={() => setIsContestCardOpen(true)} className={`text-white px-4 py-3.5 rounded-2xl shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center gap-2 font-mono font-black text-xs uppercase border-b-4 backdrop-blur-xl cursor-pointer ${contestStatus === 'completed' ? 'from-indigo-50 to-purple-50/50 bg-gradient-to-r border-b-purple-700' : contestStatus === 'not_started' ? 'from-sky-50 to-blue-50/50 bg-gradient-to-r border-b-blue-700' : hasStartedContest ? 'from-amber-50 to-orange-50/50 bg-gradient-to-r border-b-orange-700' : 'from-emerald-400 to-teal-500 bg-gradient-to-r border-b-emerald-700'}`}><Clock size={16} className={contestStatus === 'not_started' ? '' : 'animate-spin'} style={{ animationDuration: '4s' }} />{contestStatus === 'completed' ? `Bitdi (${currentStudentScore} Xal)` : timeLeftStr}</button>
-      )}
-
-      {/* DETALLI POPUP MODAL */}
-      {isResultsModalOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white border-2 border-indigo-200 w-full max-w-5xl h-[85vh] rounded-[28px] shadow-2xl overflow-hidden flex flex-col">
-            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-indigo-50/40 shrink-0">
-              <div className="flex items-center gap-2"><Award className="text-indigo-600" size={20} /><h3 className="font-black text-slate-800 tracking-wider text-sm uppercase">Detallı Sınaq Hesabatı və Yazılmış Kodlar</h3></div>
-              <div className="flex items-center gap-4">
-                <div className="bg-indigo-100/70 border border-indigo-200 px-4 py-1.5 rounded-xl text-right"><span className="font-mono font-black text-xs text-indigo-700">BAL: {currentStudentScore} / {totalContestScore}</span></div>
-                <button onClick={() => setIsResultsModalOpen(false)} className="text-slate-400 hover:text-slate-900 transition-colors cursor-pointer p-1 rounded-lg hover:bg-slate-100"><X size={18} /></button>
-              </div>
-            </div>
-            <div className="flex-1 flex overflow-hidden bg-slate-50/50">
-              <div className="w-1/3 border-r border-slate-100 bg-white p-4 overflow-y-auto space-y-2 custom-scrollbar">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block px-1 mb-2">Məsələlər</span>
-                {activeContest.questions?.map((question, index) => {
-                  const prog = currentSubmission?.progress?.[question._id] || currentSubmission?.progress?.[question.id];
-                  const passed = prog?.userPassedCount || 0;
-                  const total = question.totalTestCases;
-                  const isCorrect = passed === total && total > 0;
-                  const isSelected = selectedQuestionId === (question._id || question.id);
-                  return (
-                    <button key={question._id} onClick={() => setSelectedQuestionId(question._id || question.id)} className={`w-full flex items-center justify-between p-3 rounded-xl border text-left transition-all cursor-pointer ${isSelected ? 'border-indigo-500 bg-indigo-50/60 shadow-sm ring-1 ring-indigo-500' : 'border-slate-100 bg-slate-50/40 hover:bg-slate-50'}`}>
-                      <div className="flex items-center gap-2.5 truncate">
-                        {isCorrect ? <CheckCircle2 className="text-emerald-500 shrink-0" size={16} /> : passed > 0 ? <AlertCircle className="text-amber-500 shrink-0" size={16} /> : <XCircle className="text-rose-400 shrink-0" size={16} />}
-                        <div className="truncate"><span className="font-black text-slate-800 text-xs block truncate">Sual #{index + 1}</span><span className="font-mono text-[9px] text-slate-400 font-bold block">{passed}/{total} Test</span></div>
-                      </div>
-                      <span className={`font-mono font-black text-[11px] shrink-0 ${isCorrect ? 'text-emerald-600' : 'text-slate-500'}`}>{isCorrect ? question.points || question.score || 100 : 0} X</span>
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="flex-1 flex flex-col overflow-hidden p-5 space-y-4">
-                {activeSelectedQuestion ? (
-                  <>
-                    <div className="bg-white border border-slate-200/60 rounded-2xl p-4 shadow-sm shrink-0">
-                      <div className="flex justify-between items-start mb-1">
-                        <h4 className="font-black text-slate-900 text-sm flex items-center gap-1.5"><FileText size={15} className="text-indigo-500" /> {activeSelectedQuestion.title || `Sual Detalları`}</h4>
-                        <span className="font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md text-[10px] font-black">Test: {activeSelectedProgress?.userPassedCount || 0} / {activeSelectedQuestion.totalTestCases}</span>
-                      </div>
-                      <p className="text-slate-600 text-xs leading-relaxed mt-2 whitespace-pre-line bg-slate-50 p-3 rounded-xl border border-dashed border-slate-200">{activeSelectedQuestion.description || "Bu sual üçün əlavə təsvir mətni daxil edilməyib."}</p>
-                    </div>
-                    <div className="flex-1 flex flex-col bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden shadow-inner">
-                      <div className="bg-slate-950/80 px-4 py-2 flex justify-between items-center border-b border-slate-800 shrink-0"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest font-mono flex items-center gap-1.5"><Code2 size={12} className="text-emerald-400" /> Şagirdin Göndərdiyi Son Kod (Submission)</span></div>
-                      <div className="flex-1 p-4 overflow-auto custom-scrollbar font-mono text-xs text-emerald-400 leading-relaxed whitespace-pre select-text">
-                        {activeSelectedProgress?.code || activeSelectedProgress?.solution ? <code>{activeSelectedProgress.code || activeSelectedProgress.solution}</code> : <div className="text-slate-500 italic text-center mt-10 font-sans text-xs">Şagird bu məsələ üçün heç bir kod skripti göndərməyib.</div>}
-                      </div>
-                    </div>
-                  </>
-                ) : <div className="flex-1 flex items-center justify-center text-slate-400 italic text-xs">Məlumatları görmək üçün soldan bir sual seçin.</div>}
-              </div>
-            </div>
-            <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end shrink-0"><button onClick={() => setIsResultsModalOpen(false)} className="px-6 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all cursor-pointer shadow-sm">Kodu İncelemeyi Bitir</button></div>
+        
+        <div className="flex items-center gap-3">
+          <div className="px-4 py-2 bg-white border border-slate-200 rounded-2xl flex items-center gap-2 shadow-sm">
+            <Award size={15} className="text-amber-500" />
+            <span className="font-mono font-black text-xs text-slate-800">
+              {currentStudentScore} <span className="text-slate-400 font-normal">/ {totalContestScore} P</span>
+            </span>
           </div>
+          <button 
+            onClick={() => setIsResultsModalOpen(false)} 
+            className="text-slate-400 hover:text-slate-700 p-2 rounded-2xl hover:bg-white hover:border-slate-200 border border-transparent transition-all cursor-pointer"
+          >
+            <X size={18} />
+          </button>
         </div>
-      )}
+      </div>
+
+      {/* 🍬 SUAL DÜYMƏLƏRİ (Minimalist Pill Cards) */}
+      <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1">
+        {activeContest.questions?.map((question, index) => {
+          const prog = currentSubmission?.progress?.[question._id] || currentSubmission?.progress?.[question.id];
+          const passed = prog?.userPassedCount || 0;
+          const total = question.totalTestCases;
+          const isCorrect = passed === total && total > 0;
+          const isSelected = selectedQuestionId === (question._id || question.id);
+          
+          return (
+            <button 
+              key={question._id} 
+              onClick={() => setSelectedQuestionId(question._id || question.id)} 
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer shrink-0 border ${
+                isSelected 
+                  ? 'bg-slate-900 text-white border-slate-900 shadow-lg shadow-slate-900/10 scale-102' 
+                  : 'bg-white text-slate-600 border-slate-200/80 hover:border-slate-300 hover:bg-slate-100/50'
+              }`}
+            >
+              {isCorrect ? (
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+              ) : passed > 0 ? (
+                <span className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
+              ) : (
+                <span className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]" />
+              )}
+              <span>Sual #{index + 1}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 💻 MƏRKƏZİ AÇIQ RƏNGLİ KOD PANELİ */}
+      <div className="flex-1 min-h-[300px] max-h-[420px] flex flex-col overflow-hidden bg-white rounded-[2rem] border border-slate-200/80 shadow-sm relative">
+        {activeSelectedQuestion ? (
+          <>
+            {/* Kod Header & Status Bar */}
+            <div className="px-5 py-3.5 bg-slate-50/80 border-b border-slate-100 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600">
+                  <Code2 size={14} />
+                </div>
+                <span className="font-sans text-xs font-extrabold text-slate-700">
+                  {activeSelectedQuestion.title || `Məsələ koda baxış`}
+                </span>
+              </div>
+
+              {/* Tərəqqi (Progress Bar & Xal) */}
+              <div className="flex items-center gap-3">
+                <div className="w-24 h-2 bg-slate-200 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full transition-all duration-500 rounded-full ${
+                      (activeSelectedProgress?.userPassedCount || 0) === activeSelectedQuestion.totalTestCases
+                        ? 'bg-emerald-500'
+                        : (activeSelectedProgress?.userPassedCount || 0) > 0
+                        ? 'bg-amber-500'
+                        : 'bg-rose-400'
+                    }`}
+                    style={{ 
+                      width: `${Math.min(100, ((activeSelectedProgress?.userPassedCount || 0) / (activeSelectedQuestion.totalTestCases || 1)) * 100)}%` 
+                    }}
+                  />
+                </div>
+                <span className="font-mono text-xs font-bold text-slate-500">
+                  {activeSelectedProgress?.userPassedCount || 0}/{activeSelectedQuestion.totalTestCases} Test
+                </span>
+              </div>
+            </div>
+
+            {/* Göndərilmiş Kod Sahəsi */}
+            <div className="flex-1 p-5 overflow-auto custom-scrollbar bg-slate-900/5 font-mono text-[12px] text-slate-800 leading-relaxed whitespace-pre select-text">
+              {activeSelectedProgress?.code || activeSelectedProgress?.solution ? (
+                <code>{activeSelectedProgress.code || activeSelectedProgress.solution}</code>
+              ) : (
+                <div className="h-full min-h-[200px] flex flex-col items-center justify-center text-slate-400 font-sans space-y-2">
+                  <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                    <Code2 size={20} />
+                  </div>
+                  <span className="text-xs font-semibold">Bu suala heç bir kod təqdim edilməyib</span>
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 min-h-[250px] flex flex-col items-center justify-center text-slate-400 text-xs font-sans space-y-2">
+            <Code2 size={24} className="opacity-40" />
+            <span>Detallara baxmaq üçün yuxarıdan bir sual seçin</span>
+          </div>
+        )}
+      </div>
+
+      {/* 🔮 FOOTER: Status İzahları */}
+      <div className="px-2 pt-1 flex justify-between items-center text-[11px] font-medium text-slate-500 border-t border-slate-200/60">
+        <div className="flex items-center gap-4">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Tam Keçdi
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-amber-500"></span> Qismən
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-rose-500"></span> Keçmədi
+          </span>
+        </div>
+        
+        <span className="text-[10px] text-slate-400 font-mono">Baxış rejimi</span>
+      </div>
+
+    </div>
+  </div>
+)}
     </div>
   );
 }

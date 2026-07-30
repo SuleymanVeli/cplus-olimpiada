@@ -798,7 +798,7 @@ export default function GamingPath() {
           </div>
         )}
 
-        {userData && <ContestList level={1} navigateTo={navigateTo}/>}
+        {userData && <ContestList playSFX={playSFX} level={1} navigateTo={navigateTo}/>}
 
         <canvas ref={canvasRef} className="cursor-pointer block" />
       </div>
