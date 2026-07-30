@@ -121,6 +121,20 @@ background: linear-gradient(62deg, #69bfb8 0%, #bbd279 42%, #eea63a 91%);
   color: #4f46e5;
 }
 
+/* Sol sətir nömrələri olan panelin enini və tekstin düzülüşünü sabitləyirik */
+.task-editor .cm-gutters {
+  min-width: 48px !important;
+  width: 48px !important;
+  box-sizing: border-box !important;
+}
+
+/* Sətir nömrələrinin daxildə eyni hizada dayanması üçün */
+.task-editor .cm-gutterElement {
+  width: 100% !important;
+  padding-right: 8px !important;
+  text-align: right !important;
+}
+
 @keyframes loadingBar {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(200%); }

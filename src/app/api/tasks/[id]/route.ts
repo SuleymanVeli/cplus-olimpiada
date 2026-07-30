@@ -64,7 +64,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             order: task.order,
             testCases: task.testCases, // Test case-ləri də göndəririk ki, şagird özündə yoxlaya bilsin
             status: progress.completedTasks.includes(task._id.toString()) ? 'completed' : 'active',
-            level: associatedModule.level
+            level: associatedModule.level,
+            headerCode: task.headerCode,
+            footerCode: task.footerCode
           },
           module: {
             _id: associatedModule._id,

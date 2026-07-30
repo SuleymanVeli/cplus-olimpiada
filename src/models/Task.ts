@@ -17,6 +17,8 @@ export interface ITask extends Document {
   order: number;        // Mövzu daxilində neçənci testdir
   moduleId: mongoose.Types.ObjectId; // Hansı ulduza (Mövzuya) bağlıdır
   testCases: ITestCase[]; // 🚀 Wandbox-ın yoxlayacağı testlər massivi
+  headerCode?: string; // Kodun üstündə dəyişdirilə bilməyən hissə (Məsələn: #include və ya funksiya imzaları)
+  footerCode?: string; // Kodun altında dəyişdirilə bilməyən hissə (Məsələn: main() funksiyası və çağırışlar)
 }
 
 const TestCaseSchema = new Schema({
@@ -36,7 +38,9 @@ const TaskSchema: Schema = new Schema({
   moduleId: { type: Schema.Types.ObjectId, ref: 'Module', required: true },
   
   // 🚀 Test caseləri alt sxem (Subdocument array) olaraq bura əlavə etdik
-  testCases: { type: [TestCaseSchema], required: true } 
+  testCases: { type: [TestCaseSchema], required: true },
+  headerCode: { type: String, default: '' },
+  footerCode: { type: String, default: '' }
 }, { timestamps: true });
 
 // Eyni modul daxilində eyni sıraya sahib iki test olmasın

@@ -14,7 +14,10 @@ interface TaskForm {
   constraints: string;
   points: number;
   order: number;
+  headerCode: string;
+  footerCode: string;
 }
+
 export default function AdminTasksPage() {
   const [modules, setModules] = useState<any[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
@@ -41,6 +44,8 @@ export default function AdminTasksPage() {
     constraints: '',
     points: 10,
     order: 1,
+    headerCode: '',
+    footerCode: ''
   });
   const [testCases, setTestCases] = useState<TestCaseForm[]>([
     { input: '', output: '', isSample: false }
@@ -58,7 +63,9 @@ export default function AdminTasksPage() {
       testCases: [
         { input: "5 10", output: "15", isSample: true },
         { input: "20 30", output: "50", isSample: false }
-      ]
+      ],
+      headerCode: '',
+      footerCode: ''
     };
     return JSON.stringify(template, null, 2); // Avtomatik Beautify olunmuş format
   };
@@ -115,6 +122,8 @@ export default function AdminTasksPage() {
       constraints: '',
       points: 10,
       order: nextOrder,
+      headerCode: '',
+      footerCode: ''
     });
     setTestCases([{ input: '', output: '', isSample: false }]);
     // Default JSON şablonunu təyin edirik
@@ -133,6 +142,8 @@ export default function AdminTasksPage() {
       constraints: task.constraints || '',
       points: task.points,
       order: task.order,
+      headerCode: task.headerCode || '',
+      footerCode: task.footerCode || ''
     });
     const mappedTestCases = task.testCases || [{ input: '', output: '', isSample: false }];
     setTestCases(mappedTestCases);
@@ -145,6 +156,8 @@ export default function AdminTasksPage() {
       constraints: task.constraints || '',
       points: task.points,
       order: task.order,
+      headerCode: task.headerCode || '',
+      footerCode: task.footerCode || '',
       testCases: mappedTestCases.map((tc: any) => ({
         input: tc.input,
         output: tc.output,
@@ -251,7 +264,7 @@ export default function AdminTasksPage() {
     }
   };
 
-  
+
   const handleBulkSubmit = async () => {
     setBulkError(null);
     let parsed: any;
@@ -387,6 +400,8 @@ export default function AdminTasksPage() {
                   constraints: "1 <= N <= 100",
                   points: 10,
                   order: 1,
+                  headerCode: '',
+                  footerCode: '',
                   testCases: [
                     {
                       input: "5 10",
@@ -587,6 +602,26 @@ export default function AdminTasksPage() {
                     </div>
                   </div>
                   <div>
+                    <label className="text-[11px] font-black text-slate-400 uppercase block mb-1">Basliq Kod</label>
+                    <textarea
+                      rows={3} disabled={isSubmitting}
+                      value={form.headerCode}
+                      onChange={(e) => setForm({ ...form, headerCode: e.target.value })}
+                      placeholder=""
+                      className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl font-medium text-xs outline-none focus:border-sky-500 font-mono leading-relaxed disabled:bg-slate-50"
+                    />
+                  </div>
+                   <div>
+                    <label className="text-[11px] font-black text-slate-400 uppercase block mb-1">Sonluq Kod</label>
+                    <textarea
+                      rows={3} disabled={isSubmitting}
+                      value={form.footerCode}
+                      onChange={(e) => setForm({ ...form, footerCode: e.target.value })}
+                      placeholder=""
+                      className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl font-medium text-xs outline-none focus:border-sky-500 font-mono leading-relaxed disabled:bg-slate-50"
+                    />
+                  </div>
+                  <div>
                     <label className="text-[11px] font-black text-slate-400 uppercase block mb-1">Məsələnin Şərti / Nağılı (Description)</label>
                     <textarea
                       rows={4} disabled={isSubmitting}
@@ -596,6 +631,7 @@ export default function AdminTasksPage() {
                       className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl font-medium text-xs outline-none focus:border-sky-500 font-mono leading-relaxed disabled:bg-slate-50"
                     />
                   </div>
+                 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="text-[11px] font-black text-slate-400 uppercase block mb-1">Giriş Formatı (Input Format)</label>
