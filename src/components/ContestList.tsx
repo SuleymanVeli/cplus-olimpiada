@@ -68,14 +68,7 @@ export default function ContestList({ level, navigateTo, playSFX }: ContestListP
   }, [level]);
 
   if (isSubsLoading) {
-    return (
-      <div className="fixed top-6 right-6 z-50 pointer-events-auto animate-in fade-in duration-300">
-        <div className="bg-slate-800 text-slate-400 px-4 py-3.5 rounded-2xl shadow-lg flex items-center gap-2 font-mono font-black text-xs uppercase border-b-4 border-b-slate-900 animate-pulse">
-          <Loader2 size={14} className="animate-spin" />
-          <span>Sınaqlar Yüklənir...</span>
-        </div>
-      </div>
-    );
+    return <></>
   }
 
   if (!displayingContests.length) return null;

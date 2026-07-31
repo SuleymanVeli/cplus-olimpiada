@@ -511,7 +511,7 @@ export default function DynamicArenaPage() {
                     disabled={isValidating}
                     className="w-full sm:w-auto bg-gradient-to-r from-emerald-400 to-teal-500 text-white px-10 py-4 text-xs font-black rounded-2xl border-b-[5px] border-emerald-600 active:border-b-0 active:translate-y-[5px] transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer uppercase tracking-widest shadow-md"
                   >
-                    {isValidating ? "KOD SINAQDAN KEÇİR... ⏳" : <><Play size={14} fill="white" /> SEHRİ YOXYA ✨</>}
+                    {isValidating ? "KOD SINAQDAN KEÇİR... ⏳" : <><Play size={14} fill="white" /> SEHRİ YOXLA ✨</>}
                   </button>
                 ) : (
                   <button

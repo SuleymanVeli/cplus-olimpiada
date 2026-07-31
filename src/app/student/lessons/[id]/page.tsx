@@ -343,7 +343,7 @@ export default function InteractiveLessonPage() {
               <div className="flex justify-end pt-1">
                 {/* Səviyyəyə görə butonun kənar rəngləri və gradienti fərqli çalarlarda dolur */}
                 <button
-                  onClick={handleCompleteLesson}
+                  onClick={goBackToMap}
                   className={`w-full sm:w-auto text-white px-10 py-4 text-xs font-black rounded-2xl border-b-[5px] active:border-b-0 active:translate-y-[5px] transition-all flex items-center justify-center gap-2 cursor-pointer uppercase tracking-widest shadow-md
                     ${lesson?.level === 2 
                       ? 'bg-gradient-to-r from-amber-500 to-orange-500 border-amber-700' 
@@ -351,7 +351,7 @@ export default function InteractiveLessonPage() {
                     }
                   `}
                 >
-                  <Sword size={14} /> NÖVBƏTİ TAPŞIRIQLARA KEÇ 🚀
+                  <Sword size={14} /> TAPŞIRIQLARA BAŞLA🚀
                 </button>
               </div>
             </div>

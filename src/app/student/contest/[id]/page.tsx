@@ -292,6 +292,8 @@ export default function DynamicArenaPage() {
 
     if (!activeContest || !idToValidate || validatingId === idToValidate) return;
 
+    playSFX('loading', 0.5);
+
     setValidatingId(idToValidate); // Sırf bu sualı bloklayırıq 🔒
 
     setDynamicState(prev => ({
@@ -418,9 +420,6 @@ export default function DynamicArenaPage() {
   const isLevel2 = contest?.level === 2;
 
   if (!contest) return null;
-
-
-  console.log(currentProgress)
 
   return (
     <div className={`min-h-screen dynamic-arena-bg ${isLevel2 ? 'level-2-theme' : 'level-1-theme'} text-slate-700 font-sans select-none pb-20 relative w-full overflow-x-hidden`}>

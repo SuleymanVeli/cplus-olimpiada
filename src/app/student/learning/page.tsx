@@ -733,7 +733,7 @@ export default function GamingPath() {
                 </div>
 
                 {/* DÜYMƏ BÖLMƏSİ (Yalnız Aktiv və Sıradan Kilidli olanlar üçün) */}
-                {activeNode.state === 'active' ? (
+                {(activeNode.state === 'active' || (activeNode.type === 'lesson' && activeNode.state === 'completed')) ? (
                   <button
                     onClick={() => startTask(activeNode)}
                     className={`w-full text-white font-black text-xs text-center py-3 mt-3 rounded-xl border-b-[4px] transition-all cursor-pointer uppercase tracking-widest active:border-b-0 active:translate-y-[4px]
