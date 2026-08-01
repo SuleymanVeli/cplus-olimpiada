@@ -84,9 +84,9 @@ export default function InteractiveLessonPage() {
     }
 
     function setupMentor(data: LessonData) {
-       const assignedAnimal = data.level === 1
-                  ? animalsDataForests[(data.order || 0) % animalsDataForests.length]            
-                  : animalsDataAdventurers[(data.order || 0) % animalsDataAdventurers.length];
+      const assignedAnimal = data.level === 1
+        ? animalsDataForests[(data.order || 0) % animalsDataForests.length]
+        : animalsDataAdventurers[(data.order || 0) % animalsDataAdventurers.length];
 
       setMentorAnimal(assignedAnimal);
       setMentorSpeech(`Salam, gənc kod yazarı! 🌟 Mən ${data.level === 1 ? 'meşənin' : 'cəngəllik'} müəllimi ${assignedAnimal.name}. Bugün səninlə super bir mövzu öyrənəcəyik! Hazırsansa, əvvəlcə izah videomuza baxaq, sonra konspekti oxuyarıq! 🚀`);
@@ -99,7 +99,7 @@ export default function InteractiveLessonPage() {
         title: 'C++ Proqramının Əsas Strukturu və `cout`',
         videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
         order: 3,
-        level:1,
+        level: 1,
         content: `
           <h3>🚀 C++ Dünyasına Xoş Gəldiniz!</h3>
           <p>Hər bir C++ proqramı xüsusi bir ana şablondan başlayır. Kompüter kodu yuxarıdan aşağıya doğru oxuyur və icra edir.</p>
@@ -134,6 +134,19 @@ export default function InteractiveLessonPage() {
     }
   }, [params.id, userData?._id]);
 
+  const goBackToMap = () => {
+    switch (lesson?.level) {
+      case 1:
+        navigateTo('/student/learning');
+        break;
+      case 2:
+        navigateTo('/student/adventure');
+        break;
+      default:
+        navigateTo('/student/learning');
+    }
+  };
+
   const handleCompleteLesson = async () => {
     if (!lesson) return;
     const mockUserId = userData?._id;
@@ -148,29 +161,15 @@ export default function InteractiveLessonPage() {
           level: lesson.level,
           id: lesson._id
         }),
-      });
-      if (lesson.nextTaskId) {
-        navigateTo(`/student/arena/${lesson.nextTaskId}`);
-      } else {
-        navigateTo('/student/learning');
-      }
+      })
+
+      goBackToMap();
     } catch (error) {
-      if (lesson.nextTaskId) navigateTo(`/student/arena/${lesson.nextTaskId}`);
+      goBackToMap();
     }
   };
 
-  const goBackToMap = () => {
-    switch (lesson?.level) {
-      case 1:
-        navigateTo('/student/learning');
-        break;
-      case 2:
-        navigateTo('/student/adventure');
-        break;
-      default:
-        navigateTo('/student/learning');
-    }
-  };
+
 
   if (loading) {
     return (
@@ -186,7 +185,7 @@ export default function InteractiveLessonPage() {
   if (!lesson) return null;
 
   return (
-  <div className={`min-h-screen dynamic-arena-bg ${lesson?.level === 2 ? 'level-2-theme' : 'level-1-theme'} text-slate-700 font-sans select-none pb-20 relative`}>
+    <div className={`min-h-screen dynamic-arena-bg ${lesson?.level === 2 ? 'level-2-theme' : 'level-1-theme'} text-slate-700 font-sans select-none pb-20 relative`}>
 
       {/* Şən Bulud Arxa Fon Dekorasiyası */}
       <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(#2ecc71_1.5px,transparent_1.5px)] [background-size:24px_24px]"></div>
@@ -343,10 +342,10 @@ export default function InteractiveLessonPage() {
               <div className="flex justify-end pt-1">
                 {/* Səviyyəyə görə butonun kənar rəngləri və gradienti fərqli çalarlarda dolur */}
                 <button
-                  onClick={goBackToMap}
+                  onClick={handleCompleteLesson}
                   className={`w-full sm:w-auto text-white px-10 py-4 text-xs font-black rounded-2xl border-b-[5px] active:border-b-0 active:translate-y-[5px] transition-all flex items-center justify-center gap-2 cursor-pointer uppercase tracking-widest shadow-md
-                    ${lesson?.level === 2 
-                      ? 'bg-gradient-to-r from-amber-500 to-orange-500 border-amber-700' 
+                    ${lesson?.level === 2
+                      ? 'bg-gradient-to-r from-amber-500 to-orange-500 border-amber-700'
                       : 'bg-gradient-to-r from-emerald-400 to-teal-500 border-emerald-600'
                     }
                   `}
